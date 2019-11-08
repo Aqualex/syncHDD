@@ -78,8 +78,6 @@ def getAvailableSpace(path):
 def createTodayFolder(path):
     folderName = datetime.datetime.now().strftime("%Y.%m.%d")
     #list folder in directory and check if fodler for today already exists 
-    #print(folderName)
-    #print(os.listdir(path))
     if not folderName in os.listdir(path) :
         log(0,"createTodayFolder: Creating folder: " + folderName + " in " + path)
         try:
@@ -96,13 +94,9 @@ def copyFilesAccross(source,destination):
     #check if there is enough space
     log(0,"copyFilesAccross: Copying files ...")
     try:
-        print('in copyFIleAccresoos -> '+ source)
-        print('in coputfile acres -> '+ destination)
         copy_tree(source,destination)
     except OSError as e:
         log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e)
-    #except IOError as e: 
-     #   log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e)
     
 def checkEnvVar(eV):
     for v in eV: 
@@ -114,12 +108,9 @@ def main():
     checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"])
     source = os.getenv("SYNCHDD_FROM")
     destination = os.getenv("SYNCHDD_TO")
-    print('This is source -> '+ source)
-    print('This is destination -> '+ destination)
     log(0,"main: Moving from " + source + " to " + destination)
     #create folder with today's date 
     destination = destination + createTodayFolder(destination)
-    print('New Destionation -> ',destination)
     if(getNecessarySpace(source) > getAvailableSpace(destination)):
         log(1,"main: Needed space is greater than available space. Necessary: " 
             + str(getNecessarySpace(source)) 
