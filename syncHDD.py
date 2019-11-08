@@ -21,13 +21,6 @@ from distutils.dir_util import copy_tree
 import sys 
 
 ###############################################################################
-##     ENVIRONMENT VARIABLES - testing only
-###############################################################################
-os.environ["SYNCHDD_FROM"] = "/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/fromDirectory/"
-os.environ["SYNCHDD_TO"] = "/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/toDirectory/"
-os.environ["SYNCHDD_LOG"] = "/tmp/"
-
-###############################################################################
 ##     DEFINING FUNCTIONS
 ############################################################################### 
 def getTimestamp():
@@ -141,11 +134,3 @@ def main():
 ###############################################################################
 
 main()
-  
-#print(getNecessarySpace(os.getenv("SYNCHDD_FROM")))
-#print(getAvailableSpace(os.getenv("SYNCHDD_TO")))
-#getAvailableSpace(os.getenv("SYNCHDD_TO"))
-#print(getTimestamp())
-#log(1,"this is a test file")
-#createTodayFolder(os.getenv("SYNCHDD_TO"))
-#getNecessarySpace(os.getenv("FROM"))
