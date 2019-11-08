@@ -16,21 +16,22 @@
 
 import os                                                                      # environ,
 import math                                                                    # rounding up, 
-import datetime
-import shutil                                                                  # copytree  
+import datetime                                                                # copytree  
+from distutils.dir_util import copy_tree
+import sys 
 
 ###############################################################################
 ##     ENVIRONMENT VARIABLES - testing only
 ###############################################################################
 os.environ["SYNCHDD_FROM"] = "/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/fromDirectory/"
 os.environ["SYNCHDD_TO"] = "/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/toDirectory/"
-#os.environ["SYNCHDD_LOG"] = "/tmp/"
+os.environ["SYNCHDD_LOG"] = "/tmp/"
 
 ###############################################################################
 ##     DEFINING FUNCTIONS
 ############################################################################### 
 def getTimestamp():
-    return datetime.datetime.now().strftime("%Y.%m.%dD%H.%M.%S.%f")
+    return datetime.datetime.now().strftime("%Y.%m.%dD%H.%M.%S.%f")  
 
 def getDate():
     return datetime.datetime.now().strftime("%Y.%m.%d")
@@ -58,7 +59,10 @@ def log(lvl,message):
     message = createLogMessage(lvl,message)
     #print to file
     print(message)
-    logFileHandle = open(logFilePath,"w")
+    if os.path.exists(logFilePath):
+        logFileHandle = open(logFilePath,"a+")
+    else:
+        logFileHandle = open(logFilePath,"w")
     logFileHandle.write(message)
     logFileHandle.close()
 
@@ -93,24 +97,36 @@ def createTodayFolder(path):
             log(0,"createTodayFolder: Successfully created folder " + folderName + " in " + path)
     else:
         log(1,"createTodayFolder: Folder already exists ...")
+    return folderName
     
 def copyFilesAccross(source,destination):
     #check if there is enough space
     log(0,"copyFilesAccross: Copying files ...")
     try:
-        shutil.copytree(source,destination)
-    except shutil.Error as e:
+        print('in copyFIleAccresoos -> '+ source)
+        print('in coputfile acres -> '+ destination)
+        copy_tree(source,destination)
+    except OSError as e:
         log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e)
-    except OSError as e: 
-        log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e)
+    #except IOError as e: 
+     #   log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e)
     
+def checkEnvVar(eV):
+    for v in eV: 
+        if os.getenv(v) is None: 
+            log(1,'checkEnvVar: Environment variable: ' + v + ' has not been set. Function will terminate ...')
+            sys.exit()
     
 def main():
+    checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"])
     source = os.getenv("SYNCHDD_FROM")
     destination = os.getenv("SYNCHDD_TO")
+    print('This is source -> '+ source)
+    print('This is destination -> '+ destination)
     log(0,"main: Moving from " + source + " to " + destination)
     #create folder with today's date 
-    createTodayFolder(destination)
+    destination = destination + createTodayFolder(destination)
+    print('New Destionation -> ',destination)
     if(getNecessarySpace(source) > getAvailableSpace(destination)):
         log(1,"main: Needed space is greater than available space. Necessary: " 
             + str(getNecessarySpace(source)) 
