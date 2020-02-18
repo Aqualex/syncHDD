@@ -14,15 +14,29 @@
 ##     IMPORT UTILITIES  
 ###############################################################################
 
-import os                                                                      # environ,
-import math                                                                    # rounding up, 
-import datetime                                                                # copytree  
+import os                                                                      
+import math                                                                     
+import datetime                                                                 
 from distutils.dir_util import copy_tree
+from distutils.dir_util import remove_tree
 import sys 
+import shutil
+
+os.environ['SYNCHDD_DAYS_KEEP'] = '2'
 
 ###############################################################################
 ##     DEFINING FUNCTIONS
 ############################################################################### 
+def hdfooter(vr):
+	if(vr == 'header'):
+		print('')
+		print('========== STARTING FUNCTION ==========')
+		print('')
+	else:
+		print('')
+		print('========== **ENDING FUNCTION ==========')
+		print('')
+
 def getTimestamp():
     return datetime.datetime.now().strftime("%Y.%m.%dD%H.%M.%S.%f")  
 
@@ -36,7 +50,7 @@ def createLogMessage(lvl,message):
         prefix = "[ERROR]|"
     else:
         prefix = "[DEBUG]|"
-    return prefix + getTimestamp() + "|" + message 
+    return prefix + getTimestamp() + "| " + message 
         
 def log(lvl,message):
     #create log file in specified location 
@@ -61,6 +75,31 @@ def log(lvl,message):
 
 def convertBytesToMb(bytesValue):
     return bytesValue/1000000
+
+def makeSpace(path):
+	print('TEST') 
+
+def removeDays(path):
+	# check if SYNCHDD_DAYS_KEEP is defined and only keep the data copied for 
+	# thos days 
+	if 'SYNCHDD_DAYS_KEEP' in os.environ: 
+		log(0,"removeDays: Removing data older than " + os.getenv('SYNCHDD_DAYS_KEEP') + " days ...")
+		#print(os.listdir(path))
+		dt = os.listdir(path)
+		#threshold = int(os.environ('SYNCHDD_DAYS_KEEP'))
+		#print(threshold)
+		thresholdDate = (datetime.datetime.today() - datetime.timedelta(days = int(os.getenv('SYNCHDD_DAYS_KEEP')))).strftime('%Y.%m.%d')
+		#print(type(thresholdDate))
+		for i in dt: 
+			#print('date is ' + i)
+			#print(datetime.datetime.strptime(i,'%Y.%m.%d'))
+			if (datetime.datetime.strptime(i,'%Y.%m.%d') < datetime.datetime.strptime(thresholdDate,"%Y.%m.%d")):
+				print(i)
+				print(path + i + "/")
+				try:
+					remove_tree(path + i + "/")
+				except OSError as e: 
+					log(1,"removeDays: Failed to delete directory [" + (path + i + "/") + "] with error: " + e)
 
 def getNecessarySpace(path):
     log(0,"getNecessarySpace: Getting necessary space ...")
@@ -105,20 +144,23 @@ def checkEnvVar(eV):
             sys.exit()
     
 def main():
-    checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"])
-    source = os.getenv("SYNCHDD_FROM")
-    destination = os.getenv("SYNCHDD_TO")
-    log(0,"main: Moving from " + source + " to " + destination)
+	#hdfooter('header')
+	#checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"])
+	source = os.getenv("SYNCHDD_FROM")
+	destination = os.getenv("SYNCHDD_TO")
+	removeDays(destination)
+	#log(0,"main: Moving from " + source + " to " + destination)
     #create folder with today's date 
-    destination = destination + createTodayFolder(destination)
-    if(getNecessarySpace(source) > getAvailableSpace(destination)):
-        log(1,"main: Needed space is greater than available space. Necessary: " 
-            + str(getNecessarySpace(source)) 
-            + " Available: " 
-            + str(getAvailableSpace(destination)))
-    else:
-        log(0,"main: There is enough space. Files can be copied")
-        copyFilesAccross(source,destination)
+	destination = destination + createTodayFolder(destination)
+	#if(getNecessarySpace(source) > getAvailableSpace(destination)):
+	#	log(1,"main: Needed space is greater than available space. Necessary: " 
+    #        + str(getNecessarySpace(source)) 
+    #        + " Available: " 
+    #        + str(getAvailableSpace(destination)))
+	#else:
+	#	log(0,"main: There is enough space. Files can be copied")
+	#	copyFilesAccross(source,destination)
+	#hdfooter('footer')
         
 ###############################################################################
 ##     MAIN 
