@@ -20,9 +20,12 @@ import datetime
 from distutils.dir_util import copy_tree
 from distutils.dir_util import remove_tree
 import sys 
-import shutil
+#import shutil
 
 os.environ['SYNCHDD_DAYS_KEEP'] = '2'
+os.environ['SYNCHDD_FROM'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/FROM/'
+os.environ['SYNCHDD_TO'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/TO/'
+os.environ['SYNCHDD_LOG'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/'
 
 ###############################################################################
 ##     DEFINING FUNCTIONS
@@ -52,7 +55,8 @@ def createLogMessage(lvl,message):
         prefix = "[DEBUG]|"
     return prefix + getTimestamp() + "| " + message 
         
-def log(lvl,message):
+def openCloseLogFile(action,file=None):
+    #function to open the logfile and print the header and footer 
     #create log file in specified location 
     if 'SYNCHDD_LOG' in os.environ :
         logFilePath = os.getenv("SYNCHDD_LOG")
@@ -60,18 +64,28 @@ def log(lvl,message):
         logFilePath = os.getcwd()
     logFileName = "logOutput_" + getDate() + ".log"
     logFilePath = logFilePath + logFileName 
-    if not os.path.exists(logFilePath):
-        open(logFilePath,"w")
+    if action == "open":
+        if os.path.exists(logFilePath):
+            #if file exists open to append new log messages
+            file = open(logFilePath,"a+")
+            file.write('========== STARTING FUNCTION ==========\n')
+            return file
+        else:
+            #if files does not exist, create it.
+            file = open(logFilePath,"w")
+            file.write('========== STARTING FUNCTION ==========\n')            
+            return file
+    else:
+        file.write('========== **ENDING FUNCTION ==========\n\n')
+        file.close()
+    
+def log(lvl,message,file):
     #create log message
     message = createLogMessage(lvl,message)
     #print to file
     print(message)
-    if os.path.exists(logFilePath):
-        logFileHandle = open(logFilePath,"a+")
-    else:
-        logFileHandle = open(logFilePath,"w")
-    logFileHandle.write(message)
-    logFileHandle.close()
+    file.write(message)
+    file.write('\n')
 
 def convertBytesToMb(bytesValue):
     return bytesValue/1000000
@@ -79,11 +93,11 @@ def convertBytesToMb(bytesValue):
 def makeSpace(path):
 	print('TEST') 
 
-def removeDays(path):
+def removeDays(path,file):
 	# check if SYNCHDD_DAYS_KEEP is defined and only keep the data copied for 
 	# thos days 
 	if 'SYNCHDD_DAYS_KEEP' in os.environ: 
-		log(0,"removeDays: Removing data older than " + os.getenv('SYNCHDD_DAYS_KEEP') + " days ...")
+		log(0,"removeDays: Removing data older than " + os.getenv('SYNCHDD_DAYS_KEEP') + " days ...",file)
 		#print(os.listdir(path))
 		dt = os.listdir(path)
 		#threshold = int(os.environ('SYNCHDD_DAYS_KEEP'))
@@ -99,10 +113,10 @@ def removeDays(path):
 				try:
 					remove_tree(path + i + "/")
 				except OSError as e: 
-					log(1,"removeDays: Failed to delete directory [" + (path + i + "/") + "] with error: " + e)
+					log(1,"removeDays: Failed to delete directory [" + (path + i + "/") + "] with error: " + e,file)
 
-def getNecessarySpace(path):
-    log(0,"getNecessarySpace: Getting necessary space ...")
+def getNecessarySpace(path,file):
+    log(0,"getNecessarySpace: Getting necessary space ...",file)
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(path):
         for f in filenames:
@@ -110,57 +124,62 @@ def getNecessarySpace(path):
             total_size += os.path.getsize(fp)
     return math.ceil(convertBytesToMb(total_size))
     
-def getAvailableSpace(path):
-    log(2,"getAvailableSpace: Getting available space ...")
+def getAvailableSpace(path,file):
+    log(2,"getAvailableSpace: Getting available space ...",file)
     return math.ceil(convertBytesToMb(os.statvfs(path).f_frsize * os.statvfs(path).f_bavail))
     
-def createTodayFolder(path):
+def createTodayFolder(path,file):
     folderName = datetime.datetime.now().strftime("%Y.%m.%d")
     #list folder in directory and check if fodler for today already exists 
     if not folderName in os.listdir(path) :
-        log(0,"createTodayFolder: Creating folder: " + folderName + " in " + path)
+        log(0,"createTodayFolder: Creating folder: " + folderName + " in " + path,file)
         try:
             os.mkdir(path + folderName)
         except OSError:
-            log(2,"createTodayFolder: Failed to create folder " + folderName + " in " + path)
+            log(2,"createTodayFolder: Failed to create folder " + folderName + " in " + path,file)
         else:
-            log(0,"createTodayFolder: Successfully created folder " + folderName + " in " + path)
+            log(0,"createTodayFolder: Successfully created folder " + folderName + " in " + path,file)
     else:
-        log(1,"createTodayFolder: Folder already exists ...")
+        log(1,"createTodayFolder: Folder already exists ...",file)
     return folderName
     
-def copyFilesAccross(source,destination):
+def copyFilesAccross(source,destination,file):
     #check if there is enough space
-    log(0,"copyFilesAccross: Copying files ...")
+    log(0,"copyFilesAccross: Copying files ...",file)
     try:
         copy_tree(source,destination)
     except OSError as e:
-        log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e)
+        log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e,file)
     
-def checkEnvVar(eV):
+def checkEnvVar(eV,file):
     for v in eV: 
-        if os.getenv(v) is None: 
-            log(1,'checkEnvVar: Environment variable: ' + v + ' has not been set. Function will terminate ...')
+        if os.getenv(v) is None:
+            log(1,'checkEnvVar: Environment variable: ' + v + ' has not been set. Function will terminate ...',file)
             sys.exit()
     
 def main():
-	#hdfooter('header')
-	#checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"])
-	source = os.getenv("SYNCHDD_FROM")
-	destination = os.getenv("SYNCHDD_TO")
-	removeDays(destination)
-	#log(0,"main: Moving from " + source + " to " + destination)
+    hdfooter('header')
+    file = openCloseLogFile("open")
+    #print(file)
+    checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"],file)
+    source = os.getenv("SYNCHDD_FROM")
+    #print(source)
+    destination = os.getenv("SYNCHDD_TO")
+    removeDays(destination,file)
+    log(0,"main: Moving from " + source + " to " + destination,file)
     #create folder with today's date 
-	destination = destination + createTodayFolder(destination)
-	#if(getNecessarySpace(source) > getAvailableSpace(destination)):
-	#	log(1,"main: Needed space is greater than available space. Necessary: " 
-    #        + str(getNecessarySpace(source)) 
-    #        + " Available: " 
-    #        + str(getAvailableSpace(destination)))
-	#else:
-	#	log(0,"main: There is enough space. Files can be copied")
-	#	copyFilesAccross(source,destination)
-	#hdfooter('footer')
+    destination = destination + createTodayFolder(destination,file)
+    if(getNecessarySpace(source,file) > getAvailableSpace(destination,file)):
+        log(1,"main: Needed space is greater than available space. Necessary: " 
+            + str(getNecessarySpace(source,file)) 
+            + " Available: " 
+            + str(getAvailableSpace(destination,file)))
+    else:
+            log(0,"main: There is enough space. Files can be copied",file)
+            copyFilesAccross(source,destination,file)
+    
+    openCloseLogFile("close",file)
+    hdfooter('footer')
         
 ###############################################################################
 ##     MAIN 
