@@ -20,12 +20,11 @@ import datetime
 from distutils.dir_util import copy_tree
 from distutils.dir_util import remove_tree
 import sys 
-#import shutil
 
-os.environ['SYNCHDD_DAYS_KEEP'] = '2'
+os.environ['SYNCHDD_DAYS_KEEP'] = '5'
 os.environ['SYNCHDD_FROM'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/FROM/'
 os.environ['SYNCHDD_TO'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/TO/'
-os.environ['SYNCHDD_LOG'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/'
+os.environ['SYNCHDD_LOG'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/LOGOUTPUT/'
 
 ###############################################################################
 ##     DEFINING FUNCTIONS
@@ -102,13 +101,16 @@ def removeDays(path,file):
 		dt = os.listdir(path)
 		#threshold = int(os.environ('SYNCHDD_DAYS_KEEP'))
 		#print(threshold)
+        
 		thresholdDate = (datetime.datetime.today() - datetime.timedelta(days = int(os.getenv('SYNCHDD_DAYS_KEEP')))).strftime('%Y.%m.%d')
 		#print(type(thresholdDate))
 		for i in dt: 
 			#print('date is ' + i)
 			#print(datetime.datetime.strptime(i,'%Y.%m.%d'))
+           #I need a check here that only extracts the folders which looks like a date and not every folder.
+           #I don't want to start removing folders that don't look like dates
 			if (datetime.datetime.strptime(i,'%Y.%m.%d') < datetime.datetime.strptime(thresholdDate,"%Y.%m.%d")):
-				print(i)
+				#print(i)
 				print(path + i + "/")
 				try:
 					remove_tree(path + i + "/")
