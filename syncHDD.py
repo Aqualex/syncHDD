@@ -14,12 +14,14 @@
 ##     IMPORT UTILITIES  
 ###############################################################################
 
-import os                                                                      
+import os  
+import re                                                                      #to use the match capabilities in python                                                                 
 import math                                                                     
 import datetime                                                                 
 from distutils.dir_util import copy_tree
 from distutils.dir_util import remove_tree
-import sys 
+import sys
+
 
 os.environ['SYNCHDD_DAYS_KEEP'] = '5'
 os.environ['SYNCHDD_FROM'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/FROM/'
@@ -89,6 +91,13 @@ def log(lvl,message,file):
 def convertBytesToMb(bytesValue):
     return bytesValue/1000000
 
+def return_date_like_folders(fld):
+    res = []
+    for fname in fld: 
+        if (re.match(r"\d+\.\d+\.\d+", fname)):
+            res.append(fname)
+    return res
+
 def makeSpace(path):
 	print('TEST') 
 
@@ -98,7 +107,7 @@ def removeDays(path,file):
 	if 'SYNCHDD_DAYS_KEEP' in os.environ: 
 		log(0,"removeDays: Removing data older than " + os.getenv('SYNCHDD_DAYS_KEEP') + " days ...",file)
 		#print(os.listdir(path))
-		dt = os.listdir(path)
+		dt = return_date_like_folders(os.listdir(path))
 		#threshold = int(os.environ('SYNCHDD_DAYS_KEEP'))
 		#print(threshold)
         
