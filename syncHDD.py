@@ -1,32 +1,30 @@
 ###############################################################################
 ##       Author: A.D.
-##         Year: 2019
-##        Month: November
+##         Year: 2020
+##        Month: April
 ##  Description: This script is meant to update the HDD given the location from 
 ##               the HDD needs to be synced and where it should copy the files. 
 ##               The script will check how much space is on the external HDD 
 ##               will create a folder with today's date and copy the files in 
 ##               that folder 
 ## 
+## Example Call: python3 syncHDD.py -SYNCHDD_DAYS_KEEP [integer] 
+##                                  -SYNCHDD_FROM [path] 
+##                                  -SYNCHDD_TO [path] 
+##                                  -SYNCHDD_LOG [path]
+##
 ###############################################################################
 
 ###############################################################################
 ##     IMPORT UTILITIES  
 ###############################################################################
-
 import os  
 import re                                                                      #to use the match capabilities in python                                                                 
 import math                                                                     
 import datetime                                                                 
 from distutils.dir_util import copy_tree
 from distutils.dir_util import remove_tree
-import sys
-
-
-os.environ['SYNCHDD_DAYS_KEEP'] = '5'
-os.environ['SYNCHDD_FROM'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/FROM/'
-os.environ['SYNCHDD_TO'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/TO/'
-os.environ['SYNCHDD_LOG'] = '/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/TESTFOLDER/LOGOUTPUT/'
+import sys, getopt
 
 ###############################################################################
 ##     DEFINING FUNCTIONS
@@ -106,20 +104,11 @@ def removeDays(path,file):
 	# thos days 
 	if 'SYNCHDD_DAYS_KEEP' in os.environ: 
 		log(0,"removeDays: Removing data older than " + os.getenv('SYNCHDD_DAYS_KEEP') + " days ...",file)
-		#print(os.listdir(path))
 		dt = return_date_like_folders(os.listdir(path))
-		#threshold = int(os.environ('SYNCHDD_DAYS_KEEP'))
-		#print(threshold)
-        
+
 		thresholdDate = (datetime.datetime.today() - datetime.timedelta(days = int(os.getenv('SYNCHDD_DAYS_KEEP')))).strftime('%Y.%m.%d')
-		#print(type(thresholdDate))
 		for i in dt: 
-			#print('date is ' + i)
-			#print(datetime.datetime.strptime(i,'%Y.%m.%d'))
-           #I need a check here that only extracts the folders which looks like a date and not every folder.
-           #I don't want to start removing folders that don't look like dates
 			if (datetime.datetime.strptime(i,'%Y.%m.%d') < datetime.datetime.strptime(thresholdDate,"%Y.%m.%d")):
-				#print(i)
 				print(path + i + "/")
 				try:
 					remove_tree(path + i + "/")
@@ -167,27 +156,67 @@ def checkEnvVar(eV,file):
         if os.getenv(v) is None:
             log(1,'checkEnvVar: Environment variable: ' + v + ' has not been set. Function will terminate ...',file)
             sys.exit()
-    
+
+def getProgParams(arg, parName):
+    #function to check if env var are defined if not take from command line
+    #env variables have priority
+    if os.getenv(parName) is None:
+        print('getProgParams: Environment Variable Does Not Exist -> For variable '+ parName +' setting to ' + arg)
+        return arg
+    else: 
+        print('getProgParams: Environment Variable Exists -> For variable '+ parName +' setting to ' + os.getenv(parName))
+        return os.getenv(parName)
+     
+def getCmdLineArguments():
+    #function to create a dictionary of arguments passed from the cmdline 
+    dictVal = {}                                                               #Creating an empty dictionary
+    argv = sys.argv[1:]
+    try:
+      opts, args = getopt.getopt(argv, "hd:f:t:l:" ,["SYNCHDD_DAYS_KEEP=", "SYNCHDD_FROM=", "SYNCHDD_TO=", "SYNCHDD_LOG="])
+    except getopt.GetoptError:
+      print('getCmdLineArguments: Faile to get command line arguments ...')
+      sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print("\nHelp Message:\nsyncHDD.py --SYNCHDD_DAYS_KEEP [integer] --SYNCHDD_FROM [path] --SYNCHDD_TO [path] --SYNCHDD_LOG [path]\n")
+            sys.exit()
+        elif opt in ("-d", "--SYNCHDD_DAYS_KEEP"):
+            dictVal['SYNCHDD_DAYS_KEEP'] = getProgParams(arg, 'SYNCHDD_DAYS_KEEP')
+        elif opt in ("-f", "--SYNCHDD_FROM"):
+            dictVal['SYNCHDD_FROM'] = getProgParams(arg, 'SYNCHDD_FROM')
+        elif opt in ("-t", "--SYNCHDD_TO"):
+            dictVal['SYNCHDD_TO'] = getProgParams(arg, 'SYNCHDD_TO')
+        elif opt in ("-l", "--SYNCHDD_LOG"):
+            dictVal['SYNCHDD_LOG'] = getProgParams(arg, 'SYNCHDD_LOG')
+    return dictVal
+
 def main():
+    dictVal = getCmdLineArguments()
     hdfooter('header')
     file = openCloseLogFile("open")
-    #print(file)
-    checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"],file)
-    source = os.getenv("SYNCHDD_FROM")
-    #print(source)
-    destination = os.getenv("SYNCHDD_TO")
+    for elem in ['SYNCHDD_DAYS_KEEP','SYNCHDD_FROM','SYNCHDD_TO','SYNCHDD_LOG']:
+        if not elem in list(dictVal.keys()):
+            if os.getenv(elem) is None:
+                log(1,'main: Variable '+ elem + ' is missing. Exiting ...',file)
+                sys.exit(2)
+            else: 
+                log(0,'main: Variable '+ elem + ' will be set to ' + os.getenv(elem),file)
+                dictVal[elem] = os.getenv(elem)
+    ##checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"],file)
+    src = os.getenv("SYNCHDD_FROM")
+    destination = dictVal['SYNCHDD_TO']
     removeDays(destination,file)
-    log(0,"main: Moving from " + source + " to " + destination,file)
+    log(0,"main: Moving from " + src + " to " + destination,file)
     #create folder with today's date 
     destination = destination + createTodayFolder(destination,file)
-    if(getNecessarySpace(source,file) > getAvailableSpace(destination,file)):
+    if(getNecessarySpace(src,file) > getAvailableSpace(destination,file)):
         log(1,"main: Needed space is greater than available space. Necessary: " 
-            + str(getNecessarySpace(source,file)) 
+            + str(getNecessarySpace(src,file)) 
             + " Available: " 
             + str(getAvailableSpace(destination,file)))
     else:
             log(0,"main: There is enough space. Files can be copied",file)
-            copyFilesAccross(source,destination,file)
+            copyFilesAccross(src,destination,file)
     
     openCloseLogFile("close",file)
     hdfooter('footer')
