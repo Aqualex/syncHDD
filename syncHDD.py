@@ -8,23 +8,26 @@
 ##               will create a folder with today's date and copy the files in 
 ##               that folder 
 ## 
-## Example Call: python3 syncHDD.py -SYNCHDD_DAYS_KEEP [integer] 
-##                                  -SYNCHDD_FROM [path] 
-##                                  -SYNCHDD_TO [path] 
-##                                  -SYNCHDD_LOG [path]
+## Example Call: python3 syncHDD.py --SYNCHDD_DAYS_KEEP [integer] 
+##                                  --SYNCHDD_FROM [path] 
+##                                  --SYNCHDD_TO [path] 
+##                                  --SYNCHDD_LOG [path]
 ##
 ###############################################################################
 
 ###############################################################################
 ##     IMPORT UTILITIES  
 ###############################################################################
-import os  
-import re                                                                      #to use the match capabilities in python                                                                 
-import math                                                                     
-import datetime                                                                 
-from distutils.dir_util import copy_tree
-from distutils.dir_util import remove_tree
-import sys, getopt
+import importlib, sys
+
+for moduleName in ['os', 're', 'math', 'datetime', 'distutils', 'sys', 'getopt', 'crontab', 'getpass']: 
+    print('Importing ' + moduleName + " ... ", end="")
+    try: 
+        globals()[moduleName] = importlib.import_module(moduleName)
+    except ModuleNotFoundError: 
+       print('FAILED')
+       sys.exit[1]
+    print('SUCCESS')
 
 ###############################################################################
 ##     DEFINING FUNCTIONS
@@ -44,6 +47,12 @@ def getTimestamp():
 
 def getDate():
     return datetime.datetime.now().strftime("%Y.%m.%d")
+
+def sep():
+    if sys.platform.startswith('linux'):
+        return '/'
+    if sys.platform.startswith('win'):
+        return '\\'
 
 def createLogMessage(lvl,message):
     if (lvl == 0): 
@@ -96,9 +105,6 @@ def return_date_like_folders(fld):
             res.append(fname)
     return res
 
-def makeSpace(path):
-	print('TEST') 
-
 def removeDays(path,file):
 	# check if SYNCHDD_DAYS_KEEP is defined and only keep the data copied for 
 	# thos days 
@@ -111,7 +117,7 @@ def removeDays(path,file):
 			if (datetime.datetime.strptime(i,'%Y.%m.%d') < datetime.datetime.strptime(thresholdDate,"%Y.%m.%d")):
 				print(path + i + "/")
 				try:
-					remove_tree(path + i + "/")
+					distutils.dir_util.remove_tree(path + i + "/")
 				except OSError as e: 
 					log(1,"removeDays: Failed to delete directory [" + (path + i + "/") + "] with error: " + e,file)
 
@@ -147,7 +153,7 @@ def copyFilesAccross(source,destination,file):
     #check if there is enough space
     log(0,"copyFilesAccross: Copying files ...",file)
     try:
-        copy_tree(source,destination)
+        distutils.dir_util.copy_tree(source,destination)
     except OSError as e:
         log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e,file)
     
@@ -171,10 +177,11 @@ def getCmdLineArguments():
     #function to create a dictionary of arguments passed from the cmdline 
     dictVal = {}                                                               #Creating an empty dictionary
     argv = sys.argv[1:]
+    dictVal['execLine'] = ' '.join([sys.executable] + [os.getcwd() + sep() + sys.argv[0]] + argv)
     try:
       opts, args = getopt.getopt(argv, "hd:f:t:l:" ,["SYNCHDD_DAYS_KEEP=", "SYNCHDD_FROM=", "SYNCHDD_TO=", "SYNCHDD_LOG="])
     except getopt.GetoptError:
-      print('getCmdLineArguments: Faile to get command line arguments ...')
+      print('getCmdLineArguments: Failed to get command line arguments ...')
       sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
@@ -190,6 +197,29 @@ def getCmdLineArguments():
             dictVal['SYNCHDD_LOG'] = getProgParams(arg, 'SYNCHDD_LOG')
     return dictVal
 
+def addToCron(eL, dV, file):
+    #there are some errors in here that I need to sort out
+    #seems to add the jobs quite a few times 
+    #also seems to change the scheduling for other jobs 
+    #function to add this job to the cron job if on linux
+    log(0,'addToCron: Attempting to add a new job to cron',file)
+    myCron = crontab.CronTab(user = getpass.getuser()) 
+    scriptName = dV['execLine'].split(' ')[1].split('/')[-1]
+    for job in myCron: 
+        if scriptName in job:
+            log(1,'addToCron: Job already exists -> ' + job,file)
+        else:
+            log(0,'addToCron: Adding ' + dV['execLine'] + ' to crontab ...',file)
+            print('* 23 * * * ' + dV['execLine'])
+            #myCron.new(command = '* 23 * * * ' + dV['execLine'])
+            myCron.new(command = dV['execLine'])
+            job.hour.every(5)
+
+    try: 
+        myCron.write()
+    except OSError as errorMessage: 
+        log(0,'addToCron: Failed to write to crontab with OSError -> ' + str(errorMessage), file)
+
 def main():
     dictVal = getCmdLineArguments()
     hdfooter('header')
@@ -203,20 +233,21 @@ def main():
                 log(0,'main: Variable '+ elem + ' will be set to ' + os.getenv(elem),file)
                 dictVal[elem] = os.getenv(elem)
     ##checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"],file)
-    src = os.getenv("SYNCHDD_FROM")
+    src = dictVal['SYNCHDD_FROM']
     destination = dictVal['SYNCHDD_TO']
-    removeDays(destination,file)
-    log(0,"main: Moving from " + src + " to " + destination,file)
+    addToCron(dictVal['execLine'], dictVal, file)
+    #removeDays(destination,file)
+    #log(0,"main: Moving from " + src + " to " + destination,file)
     #create folder with today's date 
-    destination = destination + createTodayFolder(destination,file)
-    if(getNecessarySpace(src,file) > getAvailableSpace(destination,file)):
-        log(1,"main: Needed space is greater than available space. Necessary: " 
-            + str(getNecessarySpace(src,file)) 
-            + " Available: " 
-            + str(getAvailableSpace(destination,file)))
-    else:
-            log(0,"main: There is enough space. Files can be copied",file)
-            copyFilesAccross(src,destination,file)
+    #destination = destination + createTodayFolder(destination,file)
+    #if(getNecessarySpace(src,file) > getAvailableSpace(destination,file)):
+    #    log(1,"main: Needed space is greater than available space. Necessary: " 
+    #        + str(getNecessarySpace(src,file)) 
+    #        + " Available: " 
+    #        + str(getAvailableSpace(destination,file)))
+    #else:
+    #        log(0,"main: There is enough space. Files can be copied",file)
+    #        copyFilesAccross(src,destination,file)
     
     openCloseLogFile("close",file)
     hdfooter('footer')
