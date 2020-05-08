@@ -13,6 +13,8 @@
 ##                                  --SYNCHDD_TO [path] 
 ##                                  --SYNCHDD_LOG [path]
 ##
+## python3 syncHDD.py --SYNCHDD_DAYS_KEEP 5 --SYNCHDD_FROM /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/from_testing_dir/ --SYNCHDD_TO /media/alex/d18fd2c4-f431-4a18-b5b1-83515df335fa --SYNCHDD_LOG /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/log_folder/
+##
 ###############################################################################
 
 ###############################################################################
@@ -29,6 +31,8 @@ for moduleName in ['os', 're', 'math', 'datetime', 'distutils', 'sys', 'getopt',
        sys.exit[1]
     print('SUCCESS')
 
+from distutils import dir_util
+
 ###############################################################################
 ##     DEFINING FUNCTIONS
 ############################################################################### 
@@ -43,7 +47,7 @@ def hdfooter(vr):
 		print('')
 
 def getTimestamp():
-    return datetime.datetime.now().strftime("%Y.%m.%dD%H.%M.%S.%f")  
+    return datetime.datetime.now().strftime("%Y.%m.%dD%H.%M.%S.%f")
 
 def getDate():
     return datetime.datetime.now().strftime("%Y.%m.%d")
@@ -63,15 +67,11 @@ def createLogMessage(lvl,message):
         prefix = "[DEBUG]|"
     return prefix + getTimestamp() + "| " + message 
         
-def openCloseLogFile(action,file=None):
+def openCloseLogFile(LFN, dV, action,file=None):
     #function to open the logfile and print the header and footer 
     #create log file in specified location 
-    if 'SYNCHDD_LOG' in os.environ :
-        logFilePath = os.getenv("SYNCHDD_LOG")
-    else:
-        logFilePath = os.getcwd()
-    logFileName = "logOutput_" + getDate() + ".log"
-    logFilePath = logFilePath + logFileName 
+    logFilePath = dV['SYNCHDD_LOG']
+    logFilePath = logFilePath + "/" + LFN 
     if action == "open":
         if os.path.exists(logFilePath):
             #if file exists open to append new log messages
@@ -105,21 +105,20 @@ def return_date_like_folders(fld):
             res.append(fname)
     return res
 
-def removeDays(path,file):
+def removeDays(path,dV,file):
 	# check if SYNCHDD_DAYS_KEEP is defined and only keep the data copied for 
 	# thos days 
-	if 'SYNCHDD_DAYS_KEEP' in os.environ: 
-		log(0,"removeDays: Removing data older than " + os.getenv('SYNCHDD_DAYS_KEEP') + " days ...",file)
-		dt = return_date_like_folders(os.listdir(path))
-
-		thresholdDate = (datetime.datetime.today() - datetime.timedelta(days = int(os.getenv('SYNCHDD_DAYS_KEEP')))).strftime('%Y.%m.%d')
-		for i in dt: 
-			if (datetime.datetime.strptime(i,'%Y.%m.%d') < datetime.datetime.strptime(thresholdDate,"%Y.%m.%d")):
-				print(path + i + "/")
-				try:
-					distutils.dir_util.remove_tree(path + i + "/")
-				except OSError as e: 
-					log(1,"removeDays: Failed to delete directory [" + (path + i + "/") + "] with error: " + e,file)
+	startTime = datetime.datetime.now()
+	log(0,"removeDays: Removing data older than " + dV['SYNCHDD_DAYS_KEEP'] + " days ...",file)
+	dt = return_date_like_folders(os.listdir(path))
+	thresholdDate = (datetime.datetime.today() - datetime.timedelta(days = int(dV['SYNCHDD_DAYS_KEEP']))).strftime('%Y.%m.%d')
+	for i in dt: 
+		if (datetime.datetime.strptime(i,'%Y.%m.%d') < datetime.datetime.strptime(thresholdDate,"%Y.%m.%d")):
+			try:
+				log(0, "removeDays: Attempting to remove: " + path + i + "/", file)
+				dir_util.remove_tree(path + i + "/")
+			except OSError as e: 
+				log(1,"removeDays: Failed to delete directory [" + (path + i + "/") + "] with error: " + e,file)
 
 def getNecessarySpace(path,file):
     log(0,"getNecessarySpace: Getting necessary space ...",file)
@@ -147,13 +146,16 @@ def createTodayFolder(path,file):
             log(0,"createTodayFolder: Successfully created folder " + folderName + " in " + path,file)
     else:
         log(1,"createTodayFolder: Folder already exists ...",file)
+        exit 1
     return folderName
     
-def copyFilesAccross(source,destination,file):
+def copyFilesAccross(source, destination, file):
     #check if there is enough space
+    startTime = datetime.datetime.now()
     log(0,"copyFilesAccross: Copying files ...",file)
     try:
-        distutils.dir_util.copy_tree(source,destination)
+        dir_util.copy_tree(source,destination)
+        log(0,"Operation has completed successfully in: " + str(datetime.datetime.now() - startTime), file)
     except OSError as e:
         log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e,file)
     
@@ -205,25 +207,30 @@ def addToCron(eL, dV, file):
     log(0,'addToCron: Attempting to add a new job to cron',file)
     myCron = crontab.CronTab(user = getpass.getuser()) 
     scriptName = dV['execLine'].split(' ')[1].split('/')[-1]
-    for job in myCron: 
-        if scriptName in job:
-            log(1,'addToCron: Job already exists -> ' + job,file)
-        else:
-            log(0,'addToCron: Adding ' + dV['execLine'] + ' to crontab ...',file)
-            print('* 23 * * * ' + dV['execLine'])
-            #myCron.new(command = '* 23 * * * ' + dV['execLine'])
-            myCron.new(command = dV['execLine'])
-            job.hour.every(5)
-
-    try: 
-        myCron.write()
-    except OSError as errorMessage: 
-        log(0,'addToCron: Failed to write to crontab with OSError -> ' + str(errorMessage), file)
+    jobExists = False
+    for job in myCron:
+        if job.comment == scriptName:
+            jobExists = not jobExists
+    if not jobExists:
+        log(0,'addToCron: Adding ' + dV['execLine'] + ' to crontab ...',file)
+        job = myCron.new(command = dV['execLine'], comment='syncHDD.py')
+        job.hour.on(23)
+        #job.minute.every(5)
+        try: 
+            myCron.write()
+            log(0,'Job has been successfully added to crontab ',file)
+        except OSError as errorMessage: 
+            log(1,'addToCron: Failed to write to crontab with OSError -> ' + str(errorMessage), file)
+    else:
+        log(1,'addToCron: Job ['+ scriptName +'] already exists',file)
 
 def main():
     dictVal = getCmdLineArguments()
+    print("RUNNING FUNCTION ...")
     hdfooter('header')
-    file = openCloseLogFile("open")
+    logFileName = "logOutput_" + datetime.datetime.now().strftime("%Y%m%dD%H%M%S%f") + ".log"
+    file = openCloseLogFile(logFileName, dictVal, "open")
+    log(0,"Log messages will be printed in: "+ logFileName,file)
     for elem in ['SYNCHDD_DAYS_KEEP','SYNCHDD_FROM','SYNCHDD_TO','SYNCHDD_LOG']:
         if not elem in list(dictVal.keys()):
             if os.getenv(elem) is None:
@@ -236,20 +243,23 @@ def main():
     src = dictVal['SYNCHDD_FROM']
     destination = dictVal['SYNCHDD_TO']
     addToCron(dictVal['execLine'], dictVal, file)
-    #removeDays(destination,file)
-    #log(0,"main: Moving from " + src + " to " + destination,file)
+    removeDays(destination,dictVal,file)
+    log(0,"main: Moving from " + src + " to " + destination,file)
     #create folder with today's date 
-    #destination = destination + createTodayFolder(destination,file)
-    #if(getNecessarySpace(src,file) > getAvailableSpace(destination,file)):
-    #    log(1,"main: Needed space is greater than available space. Necessary: " 
-    #        + str(getNecessarySpace(src,file)) 
-    #        + " Available: " 
-    #        + str(getAvailableSpace(destination,file)))
-    #else:
-    #        log(0,"main: There is enough space. Files can be copied",file)
-    #        copyFilesAccross(src,destination,file)
+    destination = destination + createTodayFolder(destination,file)
+    necessarySpace = getNecessarySpace(src,file)
+    availableSpace = getAvailableSpace(destination,file)
+    if( necessarySpace > availableSpace):
+        log(1,"main: Needed space is greater than available space. Necessary: " 
+            + str(necessarySpace) 
+            + " Available: " 
+            + str(availableSpace),file)
+    else:
+            log(0,"main: Available space: " + str(availableSpace) + " Necessary space: " + str(necessarySpace), file)
+            log(0,"main: There is enough space. Files can be copied",file)
+            copyFilesAccross(src,destination,file)
     
-    openCloseLogFile("close",file)
+    openCloseLogFile(logFileName, dictVal, "close", file)
     hdfooter('footer')
         
 ###############################################################################
