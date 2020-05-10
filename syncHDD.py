@@ -14,6 +14,7 @@
 ##                                  --SYNCHDD_LOG [path]
 ##
 ## python3 syncHDD.py --SYNCHDD_DAYS_KEEP 5 --SYNCHDD_FROM /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/from_testing_dir/ --SYNCHDD_TO /media/alex/d18fd2c4-f431-4a18-b5b1-83515df335fa --SYNCHDD_LOG /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/log_folder/
+## python3 syncHDD.py --SYNCHDD_DAYS_KEEP 5 --SYNCHDD_FROM /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/scenario2_morelocation/location_one/ /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/scenario2_morelocation/location_two/ --SYNCHDD_TO /media/alex/d18fd2c4-f431-4a18-b5b1-83515df335fa --SYNCHDD_LOG /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/log_folder/
 ##
 ###############################################################################
 
@@ -23,13 +24,13 @@
 import importlib, sys
 
 for moduleName in ['os', 're', 'math', 'datetime', 'distutils', 'sys', 'getopt', 'crontab', 'getpass']: 
-    print('Importing ' + moduleName + " ... ", end="")
+    #print('Importing ' + moduleName + " ... ", end="")
     try: 
         globals()[moduleName] = importlib.import_module(moduleName)
     except ModuleNotFoundError: 
-       print('FAILED')
+       print('FAILED to import module ' + moduleName)
        sys.exit[1]
-    print('SUCCESS')
+    #print('SUCCESS')
 
 from distutils import dir_util
 
@@ -96,7 +97,7 @@ def log(lvl,message,file):
     file.write('\n')
 
 def convertBytesToMb(bytesValue):
-    return bytesValue/1000000
+	return (bytesValue/1000000.0)/1024.0
 
 def return_date_like_folders(fld):
     res = []
@@ -121,19 +122,19 @@ def removeDays(path,dV,file):
 				log(1,"removeDays: Failed to delete directory [" + (path + i + "/") + "] with error: " + e,file)
 
 def getNecessarySpace(path,file):
-    log(0,"getNecessarySpace: Getting necessary space ...",file)
+    log(0,"getNecessarySpace: Getting necessary space for " + path,file)
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(path):
         for f in filenames:
             fp = os.path.join(dirpath, f)
             total_size += os.path.getsize(fp)
-    return math.ceil(convertBytesToMb(total_size))
+    return convertBytesToMb(total_size)
     
 def getAvailableSpace(path,file):
-    log(2,"getAvailableSpace: Getting available space ...",file)
-    return math.ceil(convertBytesToMb(os.statvfs(path).f_frsize * os.statvfs(path).f_bavail))
+    #log(2,"getAvailableSpace: Getting available space ...",file)
+    return convertBytesToMb(os.statvfs(path).f_frsize * os.statvfs(path).f_bavail)
     
-def createTodayFolder(path,file):
+def createTodayFolder(dictVal, logFileName, path,file):
     folderName = datetime.datetime.now().strftime("%Y.%m.%d")
     #list folder in directory and check if fodler for today already exists 
     if not folderName in os.listdir(path) :
@@ -145,8 +146,10 @@ def createTodayFolder(path,file):
         else:
             log(0,"createTodayFolder: Successfully created folder " + folderName + " in " + path,file)
     else:
-        log(1,"createTodayFolder: Folder already exists ...",file)
-        exit 1
+        log(1,"createTodayFolder: Folder already exists. Program will now terminate.",file)
+        openCloseLogFile(logFileName, dictVal, "close", file) 
+        hdfooter('footer')
+        sys.exit()
     return folderName
     
 def copyFilesAccross(source, destination, file):
@@ -155,24 +158,18 @@ def copyFilesAccross(source, destination, file):
     log(0,"copyFilesAccross: Copying files ...",file)
     try:
         dir_util.copy_tree(source,destination)
-        log(0,"Operation has completed successfully in: " + str(datetime.datetime.now() - startTime), file)
+        log(0,"copyFilesAccross: Operation has completed successfully in: " + str(datetime.datetime.now() - startTime), file)
     except OSError as e:
         log(1,"copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e,file)
-    
-def checkEnvVar(eV,file):
-    for v in eV: 
-        if os.getenv(v) is None:
-            log(1,'checkEnvVar: Environment variable: ' + v + ' has not been set. Function will terminate ...',file)
-            sys.exit()
 
 def getProgParams(arg, parName):
     #function to check if env var are defined if not take from command line
     #env variables have priority
     if os.getenv(parName) is None:
-        print('getProgParams: Environment Variable Does Not Exist -> For variable '+ parName +' setting to ' + arg)
+        #print('getProgParams: Environment Variable Does Not Exist -> For variable '+ parName +' setting to ' + arg)
         return arg
     else: 
-        print('getProgParams: Environment Variable Exists -> For variable '+ parName +' setting to ' + os.getenv(parName))
+        #print('getProgParams: Environment Variable Exists -> For variable '+ parName +' setting to ' + os.getenv(parName))
         return os.getenv(parName)
      
 def getCmdLineArguments():
@@ -192,7 +189,7 @@ def getCmdLineArguments():
         elif opt in ("-d", "--SYNCHDD_DAYS_KEEP"):
             dictVal['SYNCHDD_DAYS_KEEP'] = getProgParams(arg, 'SYNCHDD_DAYS_KEEP')
         elif opt in ("-f", "--SYNCHDD_FROM"):
-            dictVal['SYNCHDD_FROM'] = getProgParams(arg, 'SYNCHDD_FROM')
+        	dictVal['SYNCHDD_FROM'] = getProgParams(arg, 'SYNCHDD_FROM')
         elif opt in ("-t", "--SYNCHDD_TO"):
             dictVal['SYNCHDD_TO'] = getProgParams(arg, 'SYNCHDD_TO')
         elif opt in ("-l", "--SYNCHDD_LOG"):
@@ -215,7 +212,6 @@ def addToCron(eL, dV, file):
         log(0,'addToCron: Adding ' + dV['execLine'] + ' to crontab ...',file)
         job = myCron.new(command = dV['execLine'], comment='syncHDD.py')
         job.hour.on(23)
-        #job.minute.every(5)
         try: 
             myCron.write()
             log(0,'Job has been successfully added to crontab ',file)
@@ -225,42 +221,45 @@ def addToCron(eL, dV, file):
         log(1,'addToCron: Job ['+ scriptName +'] already exists',file)
 
 def main():
-    dictVal = getCmdLineArguments()
-    print("RUNNING FUNCTION ...")
-    hdfooter('header')
-    logFileName = "logOutput_" + datetime.datetime.now().strftime("%Y%m%dD%H%M%S%f") + ".log"
-    file = openCloseLogFile(logFileName, dictVal, "open")
-    log(0,"Log messages will be printed in: "+ logFileName,file)
-    for elem in ['SYNCHDD_DAYS_KEEP','SYNCHDD_FROM','SYNCHDD_TO','SYNCHDD_LOG']:
-        if not elem in list(dictVal.keys()):
-            if os.getenv(elem) is None:
-                log(1,'main: Variable '+ elem + ' is missing. Exiting ...',file)
-                sys.exit(2)
-            else: 
-                log(0,'main: Variable '+ elem + ' will be set to ' + os.getenv(elem),file)
-                dictVal[elem] = os.getenv(elem)
-    ##checkEnvVar(["SYNCHDD_FROM","SYNCHDD_TO","SYNCHDD_LOG"],file)
-    src = dictVal['SYNCHDD_FROM']
-    destination = dictVal['SYNCHDD_TO']
-    addToCron(dictVal['execLine'], dictVal, file)
-    removeDays(destination,dictVal,file)
-    log(0,"main: Moving from " + src + " to " + destination,file)
-    #create folder with today's date 
-    destination = destination + createTodayFolder(destination,file)
-    necessarySpace = getNecessarySpace(src,file)
-    availableSpace = getAvailableSpace(destination,file)
-    if( necessarySpace > availableSpace):
-        log(1,"main: Needed space is greater than available space. Necessary: " 
-            + str(necessarySpace) 
-            + " Available: " 
-            + str(availableSpace),file)
-    else:
-            log(0,"main: Available space: " + str(availableSpace) + " Necessary space: " + str(necessarySpace), file)
-            log(0,"main: There is enough space. Files can be copied",file)
-            copyFilesAccross(src,destination,file)
-    
-    openCloseLogFile(logFileName, dictVal, "close", file)
-    hdfooter('footer')
+	startTime = datetime.datetime.now()
+	dictVal = getCmdLineArguments()
+	hdfooter('header')
+	logFileName = "logOutput_" + datetime.datetime.now().strftime("%Y%m%dD%H%M%S%f") + ".log"
+	file = openCloseLogFile(logFileName, dictVal, "open")
+	log(0,"Log messages will be printed in: " + logFileName,file)
+	for elem in ['SYNCHDD_DAYS_KEEP','SYNCHDD_FROM','SYNCHDD_TO','SYNCHDD_LOG']:
+		if not elem in list(dictVal.keys()):
+			if os.getenv(elem) is None:
+				log(1,'main: Variable '+ elem + ' is missing. Exiting ...',file)
+				sys.exit(2)
+			else: 
+				log(0,'main: Variable '+ elem + ' will be set to ' + os.getenv(elem),file)
+				dictVal[elem] = os.getenv(elem)
+
+	src = dictVal['SYNCHDD_FROM'].split()
+	destination = dictVal['SYNCHDD_TO']
+	addToCron(dictVal['execLine'], dictVal, file)
+	removeDays(destination,dictVal,file)
+	destination = destination + createTodayFolder(dictVal, logFileName, destination,file)
+	availableSpace = getAvailableSpace(destination,file)
+	necessarySpace = 0 
+	for frm in src: 
+		necessarySpace += getNecessarySpace(frm,file)
+	if( necessarySpace > availableSpace):
+		log(1,"main: Needed space is greater than available space. Necessary: " 
+			+ str(round(necessarySpace,2)) + " GB" 
+			+ " Available: " 
+			+ str(round(availableSpace,2)) + " GB",file)
+	else:
+		log(0,"main: Available space: " + str(round(availableSpace,2)) + " GB" + " Necessary space: " + str(round(necessarySpace,2)) + " GB", file)
+		log(0,"main: There is enough space. Files can be copied",file)
+		for frm in src:
+			log(0,"main: Moving from " + frm + " to " + destination,file)
+			copyFilesAccross(frm,destination,file)
+
+	log(0,"main: Operation took: " + str(datetime.datetime.now() - startTime),file)
+	openCloseLogFile(logFileName, dictVal, "close", file)
+	hdfooter('footer')
         
 ###############################################################################
 ##     MAIN 
