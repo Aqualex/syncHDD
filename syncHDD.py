@@ -29,8 +29,7 @@ for moduleName in ['os', 're', 'math', 'datetime', 'distutils', 'sys', 'getopt',
         globals()[moduleName] = importlib.import_module(moduleName)
     except ModuleNotFoundError: 
        print('FAILED to import module ' + moduleName)
-       sys.exit[1]
-    #print('SUCCESS')
+       sys.exit()
 
 from distutils import dir_util
 
@@ -110,7 +109,7 @@ def removeDays(path,dV,file):
 	# check if SYNCHDD_DAYS_KEEP is defined and only keep the data copied for 
 	# thos days 
 	startTime = datetime.datetime.now()
-	log(0,"removeDays: Removing data older than " + dV['SYNCHDD_DAYS_KEEP'] + " days ...",file)
+	log(0,"removeDays: Removing data older than " + dV['SYNCHDD_DAYS_KEEP'] + " days from " + path,file)
 	dt = return_date_like_folders(os.listdir(path))
 	thresholdDate = (datetime.datetime.today() - datetime.timedelta(days = int(dV['SYNCHDD_DAYS_KEEP']))).strftime('%Y.%m.%d')
 	for i in dt: 
