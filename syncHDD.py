@@ -13,8 +13,6 @@
 ##                                  --SYNCHDD_TO [path] 
 ##                                  --SYNCHDD_LOG [path]
 ##
-## python3 syncHDD.py --SYNCHDD_DAYS_KEEP 5 --SYNCHDD_FROM /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/from_testing_dir/ --SYNCHDD_TO /media/alex/d18fd2c4-f431-4a18-b5b1-83515df335fa --SYNCHDD_LOG /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/log_folder/
-## python3 syncHDD.py --SYNCHDD_DAYS_KEEP 5 --SYNCHDD_FROM /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/scenario2_morelocation/location_one/ /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/scenario2_morelocation/location_two/ --SYNCHDD_TO /media/alex/d18fd2c4-f431-4a18-b5b1-83515df335fa --SYNCHDD_LOG /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/2020/github/syncHDD/log_folder/
 ##
 ###############################################################################
 
