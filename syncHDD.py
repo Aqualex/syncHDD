@@ -9,7 +9,7 @@
 ##               that folder 
 ## 
 ## Example Call: python3 syncHDD.py --SYNCHDD_DAYS_KEEP [integer] 
-##                                  --SYNCHDD_FROM [path] 
+##                                  --SYNCHDD_FROM [path as space delimtied string] 
 ##                                  --SYNCHDD_TO [path] 
 ##                                  --SYNCHDD_LOG [path]
 ##
