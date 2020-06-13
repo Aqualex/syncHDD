@@ -175,6 +175,8 @@ def copyFilesAccross(source, destination, upd, file):
             file)
     except OSError as e:
         log(1, "copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + e, file)
+    except dir_util.DistutilsFileError as e:
+        log(1, "copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + str(e), file)
 
 
 def getProgParams(arg, parName):
