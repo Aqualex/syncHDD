@@ -21,7 +21,7 @@
 ###############################################################################
 import importlib, sys
 
-for moduleName in ['os', 're', 'math', 'datetime', 'distutils', 'sys', 'getopt', 'crontab', 'getpass']:
+for moduleName in ['os', 're', 'math', 'datetime', 'distutils', 'sys', 'getopt', 'crontab', 'getpass', 'shutil']:
     # print('Importing ' + moduleName + " ... ", end="")
     try:
         globals()[moduleName] = importlib.import_module(moduleName)
@@ -113,7 +113,6 @@ def return_date_like_folders(fld):
             res.append(fname)
     return res
 
-
 def removeDays(path, dV, file):
     # check if SYNCHDD_DAYS_KEEP is defined and only keep the data copied for
     # thos days
@@ -129,7 +128,6 @@ def removeDays(path, dV, file):
                 dir_util.remove_tree(path + i + "/")
             except OSError as e:
                 log(1, "removeDays: Failed to delete directory [" + (path + i + "/") + "] with error: " + e, file)
-
 
 def getNecessarySpace(path, file):
     log(0, "getNecessarySpace: Getting necessary space for " + path, file)
@@ -162,8 +160,25 @@ def createTodayFolder(dictVal, logFileName, path, file):
         updateType = True
     return [folderName, updateType]
 
+def createPath(src, root,dest,file):
+    #if the destination doesn't have / add it
+    if(dest[-1] != "/"):
+        log(0,"createPath: Adding / to " + dest,file)
+        dest = dest + "/"
+    #Create the path to be created
+    dest = dest + root.split(src)[-1] + "/"
+    if(not os.path.exists(dest)):
+        log(0,"createPath: Directory doesn't exists. Creating " + dest,file)
+        try:
+            os.makedirs(dest, exist_ok=True)
+            return dest
+        except OSError as e:
+            log(1,"createPath: Failed to create " + dest + " with error " + e,file)
+    else:
+        return dest
 
-def copyFilesAccross(source, destination, upd, file):
+def copyFilesAccross_noshutil(source, destination, upd, file):
+    #function is deprecated . use copyFilesAcross_withShutil
     lg.set_verbosity(lg.INFO)
     lg.set_threshold(lg.INFO)
     # check if there is enough space
@@ -178,6 +193,19 @@ def copyFilesAccross(source, destination, upd, file):
     except dir_util.DistutilsFileError as e:
         log(1, "copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + str(e), file)
 
+def copyFilesAcross_withShutil(source,destination,file):
+    #function to copy files accross using shutil instead
+    for root, dirs, files in os.walk(source, topdown=True, followlinks=False):
+        for fl in files:
+            #create file name
+            fileFrom = root + "/" + fl
+            #create destination path
+            dest = createPath(source, root, destination, file) + fl
+            try:
+                log(0,"copyFilesAcross: Copying file " + fileFrom + " to " + dest + " ...",file)
+                log(0,"copyFileAcross: Copied " + shutil.copy(fileFrom, dest),file)
+            except OSError as e:
+                log(1,"Failed to copy " + fileFrom + " to " + dest,file)
 
 def getProgParams(arg, parName):
     # function to check if env var are defined if not take from command line
@@ -196,8 +224,7 @@ def getCmdLineArguments():
     argv = sys.argv[1:]
     dictVal['execLine'] = ' '.join([sys.executable] + [os.getcwd() + sep() + sys.argv[0]] + argv)
     try:
-        opts, args = getopt.getopt(argv, "hd:f:t:l:",
-                                   ["SYNCHDD_DAYS_KEEP=", "SYNCHDD_FROM=", "SYNCHDD_TO=", "SYNCHDD_LOG="])
+        opts, args = getopt.getopt(argv, "hd:f:t:l:",["SYNCHDD_DAYS_KEEP=", "SYNCHDD_FROM=", "SYNCHDD_TO=", "SYNCHDD_LOG="])
     except getopt.GetoptError:
         print('getCmdLineArguments: Failed to get command line arguments ...')
         sys.exit(2)
@@ -243,20 +270,32 @@ def addToCron(eL, dV, file):
 
 
 def main():
+    #get the starttime to see how long it takes to run the program
     startTime = datetime.datetime.now()
+    #get the command line arguments
     dictVal = getCmdLineArguments()
+    #print header
     hdfooter('header')
+    #create the name of the logfile
     logFileName = "logOutput_" + datetime.datetime.now().strftime("%Y%m%dD%H%M%S%f") + ".log"
+    #open log file
     file = openCloseLogFile(logFileName, dictVal, "open")
     log(0, "Log messages will be printed in: " + logFileName, file)
+    #fix source folder
     src = dictVal['SYNCHDD_FROM'].split()
+    #get destination folder
     destination = dictVal['SYNCHDD_TO']
+    #add job to crontab
     addToCron(dictVal['execLine'], dictVal, file)
+    #remove days older than the specified number of preservation dates
     removeDays(destination, dictVal, file)
+    #get the available space in the destination folder
     availableSpace = getAvailableSpace(destination, file)
     necessarySpace = 0
+    #get the necessary space for each path in the source variable
     for frm in src:
         necessarySpace += getNecessarySpace(frm, file)
+    #If there sn't enough space to copy, inform and exit otherwise copy files across
     if (necessarySpace > availableSpace):
         log(1, "main: Needed space is greater than available space. Necessary: "
             + str(round(necessarySpace, 2)) + " GB"
@@ -273,10 +312,13 @@ def main():
     for frm in src:
         #destination = destination + createTodayFolder(dictVal, logFileName, destination, file)
         log(0, "main: Moving from " + frm + " to " + destination, file)
-        copyFilesAccross(frm, destination, cTFRet[1], file)
+        #copyFilesAccross_noshutil(frm, destination, cTFRet[1], file)
+        copyFilesAcross_withShutil(frm,destination,file)
 
     log(0, "main: Operation took: " + str(datetime.datetime.now() - startTime), file)
+    #close log file
     openCloseLogFile(logFileName, dictVal, "close", file)
+    #print footer
     hdfooter('footer')
 
 
