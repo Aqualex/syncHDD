@@ -1,1 +1,1 @@
-python3 /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/2020/github/syncHDD/syncHDD.py --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_FROM="/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/ /media/alex/MainStorage/pastyears_and_poze/" --SYNCHDD_TO /media/alex/5D2C7FF55D58680B/ --SYNCHDD_LOG /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/2020/github/syncHDD/log_folder/
+python3 [location]/syncHDD.py --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_FROM="[src1] [src2]" --SYNCHDD_TO [destination] --SYNCHDD_LOG [location]
