@@ -1,4 +1,4 @@
-###############################################################################
+########################################################################################################################
 ##       Author: A.D.
 ##         Year: 2020
 ##        Month: April
@@ -14,12 +14,15 @@
 ##                                  --SYNCHDD_LOG [path]
 ##
 ##
-###############################################################################
+########################################################################################################################
 
-###############################################################################
+########################################################################################################################
 ##     IMPORT UTILITIES  
-###############################################################################
+########################################################################################################################
 import importlib, sys
+
+listOfErrors = []
+
 
 for moduleName in ['os', 're', 'math', 'datetime', 'distutils', 'sys', 'getopt', 'crontab', 'getpass', 'shutil']:
     # print('Importing ' + moduleName + " ... ", end="")
@@ -33,9 +36,9 @@ from distutils import dir_util
 from distutils import log as lg
 
 
-###############################################################################
+########################################################################################################################
 ##     DEFINING FUNCTIONS
-############################################################################### 
+########################################################################################################################
 def hdfooter(vr):
     if (vr == 'header'):
         print('')
@@ -45,7 +48,6 @@ def hdfooter(vr):
         print('')
         print('========== **ENDING FUNCTION ==========')
         print('')
-
 
 def getTimestamp():
     return datetime.datetime.now().strftime("%Y.%m.%dD%H.%M.%S.%f")
@@ -61,16 +63,14 @@ def sep():
     if sys.platform.startswith('win'):
         return '\\'
 
-
 def createLogMessage(lvl, message):
     if (lvl == 0):
-        prefix = "[*INFO]|"
+        prefix = "[*INFO]| "
     elif (lvl == 1):
-        prefix = "[ERROR]|"
+        prefix = "[ERROR]| "
     else:
-        prefix = "[DEBUG]|"
+        prefix = "[DEBUG]| "
     return prefix + getTimestamp() + "| " + message
-
 
 def openCloseLogFile(LFN, dV, action, file=None):
     # function to open the logfile and print the header and footer
@@ -92,19 +92,19 @@ def openCloseLogFile(LFN, dV, action, file=None):
         file.write('========== **ENDING FUNCTION ==========\n\n')
         file.close()
 
-
 def log(lvl, message, file):
     # create log message
     message = createLogMessage(lvl, message)
     # print to file
     print(message)
+    if(lvl == 1):
+        global listOfErrors
+        listOfErrors.append(message)
     file.write(message)
     file.write('\n')
 
-
 def convertBytesToMb(bytesValue):
     return (bytesValue / 1000000.0) / 1024.0
-
 
 def return_date_like_folders(fld):
     res = []
@@ -138,7 +138,6 @@ def getNecessarySpace(path, file):
             total_size += os.path.getsize(fp)
     return convertBytesToMb(total_size)
 
-
 def getAvailableSpace(path, file):
     # log(2,"getAvailableSpace: Getting available space ...",file)
     return convertBytesToMb(os.statvfs(path).f_frsize * os.statvfs(path).f_bavail)
@@ -160,7 +159,7 @@ def createTodayFolder(dictVal, logFileName, path, file):
         updateType = True
     return [folderName, updateType]
 
-def createPath(src, root,dest,file):
+def createPath(src, root,dest, dV,file):
     #if the destination doesn't have / add it
     if(dest[-1] != "/"):
         log(0,"createPath: Adding / to " + dest,file)
@@ -168,7 +167,8 @@ def createPath(src, root,dest,file):
     #Create the path to be created
     dest = dest + root.split(src)[-1] + "/"
     if(not os.path.exists(dest)):
-        log(0,"createPath: Directory doesn't exists. Creating " + dest,file)
+        if dV['VERBOSE']:
+            log(0,"createPath: Directory doesn't exists. Creating " + dest,file)
         try:
             os.makedirs(dest, exist_ok=True)
             return dest
@@ -193,17 +193,20 @@ def copyFilesAccross_noshutil(source, destination, upd, file):
     except dir_util.DistutilsFileError as e:
         log(1, "copyFileAccross: Failed to copy from " + source + " to " + destination + " with error: " + str(e), file)
 
-def copyFilesAcross_withShutil(source,destination,file):
+def copyFilesAcross_withShutil(source,destination,file,dV):
     #function to copy files accross using shutil instead
     for root, dirs, files in os.walk(source, topdown=True, followlinks=False):
         for fl in files:
             #create file name
             fileFrom = root + "/" + fl
             #create destination path
-            dest = createPath(source, root, destination, file) + fl
+            dest = createPath(source, root, destination, dV, file) + fl
             try:
-                log(0,"copyFilesAcross: Copying file " + fileFrom + " to " + dest + " ...",file)
-                log(0,"copyFileAcross: Copied " + shutil.copy(fileFrom, dest),file)
+                if dV['VERBOSE']:
+                    log(0,"copyFilesAcross: Copying file " + fileFrom + " to " + dest + " ...",file)
+                    log(0,"copyFileAcross: Copied " + shutil.copy(fileFrom, dest),file)
+                else:
+                    shutil.copy(fileFrom, dest)
             except OSError as e:
                 log(1,"Failed to copy " + fileFrom + " to " + dest,file)
 
@@ -217,14 +220,23 @@ def getProgParams(arg, parName):
         # print('getProgParams: Environment Variable Exists -> For variable '+ parName +' setting to ' + os.getenv(parName))
         return os.getenv(parName)
 
+def getExecutablePath():
+    """
+    :param arg: no argument requird
+    :return: returns the path to the executable file used in the script
+    """
+    pathToFile = sys.argv[0]
+    pathToFile = pathToFile[1 + len(os.path.commonprefix([os.getcwd(), pathToFile])):]
+    return [os.getcwd() + sep() + pathToFile]
 
 def getCmdLineArguments():
     # function to create a dictionary of arguments passed from the cmdline
     dictVal = {}  # Creating an empty dictionary
     argv = sys.argv[1:]
-    dictVal['execLine'] = ' '.join([sys.executable] + [os.getcwd() + sep() + sys.argv[0]] + argv)
+    dictVal['execLine'] = ' '.join([sys.executable] + getExecutablePath() + argv)
+    dictVal['VERBOSE'] = 0
     try:
-        opts, args = getopt.getopt(argv, "hd:f:t:l:",["SYNCHDD_DAYS_KEEP=", "SYNCHDD_FROM=", "SYNCHDD_TO=", "SYNCHDD_LOG="])
+        opts, args = getopt.getopt(argv, "hd:f:t:l:v:",["SYNCHDD_DAYS_KEEP=", "SYNCHDD_FROM=", "SYNCHDD_TO=", "SYNCHDD_LOG=", "verbose="])
     except getopt.GetoptError:
         print('getCmdLineArguments: Failed to get command line arguments ...')
         sys.exit(2)
@@ -241,8 +253,11 @@ def getCmdLineArguments():
             dictVal['SYNCHDD_TO'] = getProgParams(arg, 'SYNCHDD_TO')
         elif opt in ("-l", "--SYNCHDD_LOG"):
             dictVal['SYNCHDD_LOG'] = getProgParams(arg, 'SYNCHDD_LOG')
+        elif opt in ("-v", "--verbose"):
+            prm = getProgParams(arg,'verbose')
+            prm = '0' if(''==prm) else prm
+            dictVal['VERBOSE'] = int(prm)
     return dictVal
-
 
 def addToCron(eL, dV, file):
     # there are some errors in here that I need to sort out
@@ -267,7 +282,6 @@ def addToCron(eL, dV, file):
             log(1, 'addToCron: Failed to write to crontab with OSError -> ' + str(errorMessage), file)
     else:
         log(1, 'addToCron: Job [' + scriptName + '] already exists', file)
-
 
 def main():
     #get the starttime to see how long it takes to run the program
@@ -313,7 +327,13 @@ def main():
         #destination = destination + createTodayFolder(dictVal, logFileName, destination, file)
         log(0, "main: Moving from " + frm + " to " + destination, file)
         #copyFilesAccross_noshutil(frm, destination, cTFRet[1], file)
-        copyFilesAcross_withShutil(frm,destination,file)
+        copyFilesAcross_withShutil(frm,destination,file,dictVal)
+
+    if(len(listOfErrors) > 0):
+        log(0,"main: There have been " + str(len(listOfErrors)) + " errors captured. Appending to log file ...",file)
+        log(0,"================>> ERRORS <<===========================",file)
+        for err in listOfErrors:
+            log(0,err.split("[ERROR]|")[-1],file)
 
     log(0, "main: Operation took: " + str(datetime.datetime.now() - startTime), file)
     #close log file
@@ -321,9 +341,8 @@ def main():
     #print footer
     hdfooter('footer')
 
-
-###############################################################################
+########################################################################################################################
 ##     MAIN 
-###############################################################################
+########################################################################################################################
 if __name__ == "__main__":
     main()
