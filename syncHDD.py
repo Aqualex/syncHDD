@@ -173,7 +173,8 @@ def createPath(src, root,dest, dV,file):
             os.makedirs(dest, exist_ok=True)
             return dest
         except OSError as e:
-            log(1,"createPath: Failed to create " + dest + " with error " + e,file)
+            log(1, "createPath: Failed to create folder" + dest + ' with error: ' + e.strerror, file)
+            return ''
     else:
         return dest
 
@@ -281,7 +282,7 @@ def addToCron(eL, dV, file):
         except OSError as errorMessage:
             log(1, 'addToCron: Failed to write to crontab with OSError -> ' + str(errorMessage), file)
     else:
-        log(1, 'addToCron: Job [' + scriptName + '] already exists', file)
+        log(0, 'addToCron: Job [' + scriptName + '] already exists', file)
 
 def main():
     #get the starttime to see how long it takes to run the program
@@ -331,9 +332,14 @@ def main():
 
     if(len(listOfErrors) > 0):
         log(0,"main: There have been " + str(len(listOfErrors)) + " errors captured. Appending to log file ...",file)
+        log(0, '', file)
+        log(0, '', file)
         log(0,"================>> ERRORS <<===========================",file)
         for err in listOfErrors:
             log(0,err.split("[ERROR]|")[-1],file)
+        log(0, "================>> ERRORS <<===========================", file)
+        log(0, '', file)
+        log(0, '', file)
 
     log(0, "main: Operation took: " + str(datetime.datetime.now() - startTime), file)
     #close log file
