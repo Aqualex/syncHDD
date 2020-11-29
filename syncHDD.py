@@ -201,7 +201,8 @@ def copyFilesAcross_withShutil(source,destination,file,dV):
             #create file name
             fileFrom = root + "/" + fl
             #create destination path
-            dest = createPath(source, root, destination, dV, file) + fl
+            dest = createPath(source, root, destination, dV, file)
+            dest = [(dest + fl) if (not dest == '') else dest][0]
             try:
                 if dV['VERBOSE']:
                     log(0,"copyFilesAcross: Copying file " + fileFrom + " to " + dest + " ...",file)
@@ -209,7 +210,7 @@ def copyFilesAcross_withShutil(source,destination,file,dV):
                 else:
                     shutil.copy(fileFrom, dest)
             except OSError as e:
-                log(1,"Failed to copy " + fileFrom + " to " + dest,file)
+                log(1,"Failed to copy " + fileFrom + " to " + (dest, '<null>')[dest ==''],file)
 
 def getProgParams(arg, parName):
     # function to check if env var are defined if not take from command line
