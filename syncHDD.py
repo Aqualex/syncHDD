@@ -224,18 +224,18 @@ def getProgParams(arg, parName):
 
 def getExecutablePath():
     """
-    :param arg: no argument requird
+    :param arg: no argument required
     :return: returns the path to the executable file used in the script
     """
     pathToFile = sys.argv[0]
     pathToFile = pathToFile[1 + len(os.path.commonprefix([os.getcwd(), pathToFile])):]
-    return [os.getcwd() + sep() + pathToFile]
+    return os.getcwd() + sep() + pathToFile
 
 def getCmdLineArguments():
     # function to create a dictionary of arguments passed from the cmdline
     dictVal = {}  # Creating an empty dictionary
     argv = sys.argv[1:]
-    dictVal['execLine'] = ' '.join([sys.executable] + getExecutablePath() + argv)
+    #dictVal['execLine'] = ' '.join([sys.executable] + getExecutablePath() + argv)
     dictVal['VERBOSE'] = 0
     try:
         opts, args = getopt.getopt(argv, "hd:f:t:l:v:",["SYNCHDD_DAYS_KEEP=", "SYNCHDD_FROM=", "SYNCHDD_TO=", "SYNCHDD_LOG=", "verbose="])
@@ -259,7 +259,36 @@ def getCmdLineArguments():
             prm = getProgParams(arg,'verbose')
             prm = '0' if(''==prm) else prm
             dictVal['VERBOSE'] = int(prm)
+    execLine = ''
+    shapeExecLine=Switcher()
+    for prm in list(dictVal.keys()):
+        execLine = execLine + shapeExecLine.getMethod(prm, dictVal)
+    dictVal['execLine'] = ' '.join([sys.executable, getExecutablePath(), execLine])
     return dictVal
+
+class Switcher(object):
+    def getMethod(self, prm, dv):
+        method = getattr(self, prm, '')
+        return method(dv)
+
+    def SYNCHDD_DAYS_KEEP(self, dv):
+        return ' --SYNCHDD_DAYS_KEEP ' + str(dv['SYNCHDD_DAYS_KEEP'])
+
+    def SYNCHDD_FROM(self, dv):
+        SPLIT = dv['SYNCHDD_FROM'].split(' ')
+        if (1<len(SPLIT)):
+            return ' --SYNCHDD_FROM=' + "\"" + dv['SYNCHDD_FROM'] + "\""
+        else:
+            return ' --SYNCHDD_FROM ' + str(dv['SYNCHDD_FROM'])
+
+    def SYNCHDD_TO(self, dv):
+        return ' --SYNCHDD_TO ' + str(dv['SYNCHDD_TO'])
+
+    def SYNCHDD_LOG(self, dv):
+        return ' --SYNCHDD_LOG ' + str(dv['SYNCHDD_LOG'])
+
+    def VERBOSE(self, dv):
+        return ' --verbose ' + str(dv['VERBOSE'])
 
 def addToCron(eL, dV, file):
     # there are some errors in here that I need to sort out
@@ -290,7 +319,9 @@ def main():
     startTime = datetime.datetime.now()
     #get the command line arguments
     dictVal = getCmdLineArguments()
-    #print header
+    #print headerq
+
+    
     hdfooter('header')
     #create the name of the logfile
     logFileName = "logOutput_" + datetime.datetime.now().strftime("%Y%m%dD%H%M%S%f") + ".log"
