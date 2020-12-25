@@ -11,4 +11,4 @@ This script is used to update, on a schedule, an external HDD used for back-up. 
 * verbose             - if set to 0 only outputs errors otherwise outputs everything
 
 ## Startup Example 
-python3 syncHDD.py --SYNCHDD\_DAYS\_KEEP 7 --SYNCHDD\_FROM="path/one path/two" --SYNCHDD\_TO path/to --SYNCHDD\_LOG path/logFile --verbose 1  
+```python3 syncHDD.py --SYNCHDD\_DAYS\_KEEP 7 --SYNCHDD\_FROM="path/one path/two" --SYNCHDD\_TO path/to --SYNCHDD\_LOG path/logFile --verbose 1```  
