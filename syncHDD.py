@@ -75,22 +75,6 @@ class timeTheScript():
         return datetime.datetime.now() - self.startTime
 
 class checkPrerequisites:
-    def __init__(self, targetDestination):
-        self.tDest = targetDestination
-        self.instructionFile = self.__getInstructionsFromFile(self.tDest)
-
-    def __getInstructionsFromFile(self, tDest):
-        return pd.read_csv(tDest)
-
-    def __convertBytesToMb(self, bytesValue):
-        return (bytesValue / 1000000.0) / 1024.0
-
-    def __getNecessarySpace(self):
-        print("Check available space ... ")
-
-    def __getAvailableSpace(self):
-        return self.__convertBytesToMb(os.statvfs(self.tDest).f_frsize * os.statvfs(self.tDest).f_bavail)
-
     def checkHDDConnected(self):
         cmd = "df -h | grep 9bd13f23-12de-45f5-8a91-4508aa2cc8c0 | wc -l"
 
@@ -104,16 +88,68 @@ class checkPrerequisites:
         else:
             return False
 
-    def checkNecessarySpace(self):
-        aSpace = self.__getAvailableSpace()
-        nSpace = self.__getNecessarySpace()
+class processTransfer:
+    def __init__(self, instrFPath):
+        self.instructionFile = self.getInstructionsFromFile(instrFPath)
+
+    def getInstructionsFromFile(self, tDest):
+        # return self.appendAvailableSpace(pd.read_csv(tDest))
+        return pd.read_csv(tDest)
+    
+    def run(self):
+        df = self.instructionFile 
+
+        for dest in list(df['to'].unique()): 
+            subset = df[df['to'] == dest]
+            subset['necessarySpaceInGB'] = [None] * len(df)
+
+            for index, row in subset.iterrows():
+                subset.loc[index] = self.getNecessarySpace(row)
+
+            nSpace = sum(list(subset['necessarySpaceInGB']))
+            availableSpace = self.getAvailableSpace(dest)
+
+            if (nSpace >= availableSpace): 
+                print('Not enough space on device to copy the files! Device: ' + dest)
+            else:
+                print('Space on Device [' + str(availableSpace) +'] Necessary Space [' + str(nSpace) +'] PASS')
+                self.copyFiles()
+            
+            
+    def copyFiles(self):
+        print('test')
         
-        if nSpace > aSpace:
-            print(
-                "It doesn't seem to be enough space on the taget device. Nothing will be copied")
-            return False
+    def convertBytesToMb(self, bytesValue):
+        return (bytesValue / 1000000.0) / 1024.0
+
+    def getNecessarySpace(self, row):
+        if os.path.exists(row['from']): 
+            if os.path.isdir(row['from']):
+                print('Dealing with a folder ... ')
+            
+                total_size = 0
+
+                for dirpath, dirnames, filenames in os.walk(row['from']):
+                    for f in filenames:
+                        fp = os.path.join(dirpath, f)
+                        total_size += os.path.getsize(fp)
+
+                row['necessarySpaceInGB'] = self.convertBytesToMb(total_size)
+
+                return row 
+            else: 
+                print('Dealing with a file')
+
+                row['necessarySpaceInGB'] = self.convertBytesToMb(os.path.getsize(row['from']))
+                
+                return row 
         else:
-            return True
+            print('path does not exist ')
+            row['necessarySpaceInGB'] = 0 
+            return row 
+
+    def getAvailableSpace(self, pth):
+        return self.convertBytesToMb(os.statvfs(pth).f_frsize * os.statvfs(pth).f_bavail)
 
 ########################################################################################################################
 # DEFINING FUNCTIONS
@@ -261,44 +297,29 @@ def createPath(src, root, dest, dV, file):
     else:
         return dest
 
-def copyFilesAccross_noshutil(source, destination, upd, file):
-    # function is deprecated . use copyFilesAcross_withShutil
-    lg.set_verbosity(lg.INFO)
-    lg.set_threshold(lg.INFO)
-    # check if there is enough space
-    startTime = datetime.datetime.now()
-    log(0, "copyFilesAccross: Copying files ...", file)
-    try:
-        dir_util.copy_tree(source, destination, update=upd, verbose=1)
-        log(0, "copyFilesAccross: Operation has completed successfully in: " + str(datetime.datetime.now() - startTime),
-            file)
-    except OSError as e:
-        log(1, "copyFileAccross: Failed to copy from " + source +
-            " to " + destination + " with error: " + e, file)
-    except dir_util.DistutilsFileError as e:
-        log(1, "copyFileAccross: Failed to copy from " + source +
-            " to " + destination + " with error: " + str(e), file)
-
-def copyFilesAcross_withShutil(source, destination, file, dV):
+def copyFilesAcross_withShutil(source, destination):
+    if os.path.isdir(source):
     # function to copy files accross using shutil instead
-    for root, dirs, files in os.walk(source, topdown=True, followlinks=False):
-        for fl in files:
-            # create file name
-            fileFrom = root + "/" + fl
-            # create destination path
-            dest = createPath(source, root, destination, dV, file)
-            dest = [(dest + fl) if (not dest == '') else dest][0]
-            try:
-                if dV['VERBOSE']:
-                    log(0, "copyFilesAcross: Copying file " +
-                        fileFrom + " to " + dest + " ...", file)
-                    log(0, "copyFileAcross: Copied " +
-                        shutil.copy(fileFrom, dest), file)
-                else:
-                    shutil.copy(fileFrom, dest)
-            except OSError as e:
-                log(1, "Failed to copy " + fileFrom + " to " +
-                    (dest, '<null>')[dest == ''], file)
+        for root, dirs, files in os.walk(source, topdown=True, followlinks=False):
+            for fl in files:
+                # create file name
+                fileFrom = root + "/" + fl
+                # create destination path
+                dest = createPath(source, root, destination, dV, file)
+                dest = [(dest + fl) if (not dest == '') else dest][0]
+                try:
+                    if dV['VERBOSE']:
+                        log(0, "copyFilesAcross: Copying file " +
+                            fileFrom + " to " + dest + " ...", file)
+                        log(0, "copyFileAcross: Copied " +
+                            shutil.copy(fileFrom, dest), file)
+                    else:
+                        shutil.copy(fileFrom, dest)
+                except OSError as e:
+                    log(1, "Failed to copy " + fileFrom + " to " +
+                        (dest, '<null>')[dest == ''], file)
+    else:
+        
 
 def getProgParams(arg, parName):
     # function to check if env var are defined if not take from command line
@@ -390,10 +411,11 @@ def main():
     dictVal = getCmdLineArguments()
 
     timeCheck = timeTheScript()
-    chPre = checkPrerequisites(dictVal['SYNCHDD_INSTRUCTION_FILE'])
+    chPre = checkPrerequisites()
 
-    if (chPre.checkHDDConnected() and chPre.checkNecessarySpace()):
-        print("Will run the rest of the functions ... ")
+    if (chPre.checkHDDConnected()):
+        tf = processTransfer(dictVal['SYNCHDD_INSTRUCTION_FILE'])
+        tf.run()
     else:
         print("PASS")
 
