@@ -29,7 +29,7 @@ from distutils import dir_util
 
 listOfErrors = []
 
-for moduleName in ['os', 're', 'time', 'subprocess', 'math', 'datetime', 'distutils', 'sys', 'getopt', 'crontab', 'getpass', 'shutil']:
+for moduleName in ['os', 're', 'time', 'subprocess', 'math', 'datetime', 'distutils', 'sys', 'getopt', 'crontab', 'getpass', 'shutil', 'zipfile']:
     # print('Importing ' + moduleName + " ... ", end="")
     try:
         globals()[moduleName] = importlib.import_module(moduleName)
@@ -94,7 +94,9 @@ class processTransfer:
 
     def getInstructionsFromFile(self, tDest):
         # return self.appendAvailableSpace(pd.read_csv(tDest))
-        return pd.read_csv(tDest)
+        res = pd.read_csv(tDest)
+        res = res[res['active'] == True]
+        return res 
     
     def run(self):
         df = self.instructionFile 
@@ -117,7 +119,40 @@ class processTransfer:
             
             
     def copyFiles(self):
-        print('test')
+        instructionFile = self.instructionFile
+        crtDate = datetime.datetime.now().strftime("%Y%m%d")
+
+        for index,row in instructionFile.iterrows():
+            if row.compression == 'zip':
+                if pd.isna(row.newName):
+                    fName = row['from'].split('/')[-1] 
+                    newZip = '/' + os.path.join(*row['from'].split('/')[:-1]) + '/' + fName.split('.')[0] + '.zip'
+                else: 
+                    newZip = os.path.join(*[row.to, crtDate , row.newName.split('.')[0] + '.zip'])
+                
+                try:
+                    print(row['from'] + ' will be zipped and copied to ' + newZip)
+                    zipfile.ZipFile(newZip, mode='w').write(row['from'])
+                except: 
+                    print('Failed to zip ' + row['from'] + ' to ' + newZip)
+            else:
+                if os.path.isdir(row['from']): 
+                    print('This is a dir')
+                else:
+                    print('This is a file')
+                    try:
+                        bDir = row.to + '/' + crtDate + '/'
+                        newF = bDir + row.newName
+
+                        os.makedirs(row.to + '/' + crtDate + '/', exist_ok=True)
+
+                        if not os.path.isfile(newF):
+                            shutil.copy(row['from'], row.to + '/' + crtDate + '/' + row.newName)
+                        else: 
+                            print('File ' + newF + ' already exists! Skipping ...')
+                    except: 
+                        print('Failed to copy from ' + row['from'] + ' to ' + newName)
+
         
     def convertBytesToMb(self, bytesValue):
         return (bytesValue / 1000000.0) / 1024.0
@@ -299,7 +334,7 @@ def createPath(src, root, dest, dV, file):
 
 def copyFilesAcross_withShutil(source, destination):
     if os.path.isdir(source):
-    # function to copy files accross using shutil instead
+     # function to copy files accross using shutil instead
         for root, dirs, files in os.walk(source, topdown=True, followlinks=False):
             for fl in files:
                 # create file name
@@ -318,7 +353,6 @@ def copyFilesAcross_withShutil(source, destination):
                 except OSError as e:
                     log(1, "Failed to copy " + fileFrom + " to " +
                         (dest, '<null>')[dest == ''], file)
-    else:
         
 
 def getProgParams(arg, parName):
@@ -414,76 +448,17 @@ def main():
     chPre = checkPrerequisites()
 
     if (chPre.checkHDDConnected()):
-        tf = processTransfer(dictVal['SYNCHDD_INSTRUCTION_FILE'])
-        tf.run()
-    else:
-        print("PASS")
-
-    # get the command line arguments
-    #dictVal = getCmdLineArguments()
-    # print headerq
-    hdfooter('header')
-    # create the name of the logfile
-    # logFileName = "logOutput_" + datetime.datetime.now().strftime("%Y%m%dD%H%M%S%f") + ".log"
-    # open log file
-    # file = openCloseLogFile(logFileName, dictVal, "open")
-    # log(0, "Log messages will be printed in: " + logFileName, file)
-    # fix source folder
-    # src = dictVal['SYNCHDD_FROM'].split()
-    # get destination folder
-    #destination = dictVal['SYNCHDD_TO']
-    # add job to crontab
-    # addToCron(dictVal['execLine'], dictVal, file)
-    # remove days older than the specified number of preservation dates
-    removeDays(destination, dictVal, file)
-    # get the available space in the destination folder
-    # availableSpace = getAvailableSpace(destination, file)
-    # necessarySpace = 0
-    # get the necessary space for each path in the source variable
-    # for frm in src:
-    #    necessarySpace += getNecessarySpace(frm, file)
-    # If there sn't enough space to copy, inform and exit otherwise copy files across
-    # if (necessarySpace > availableSpace):
-    #    log(1, "main: Needed space is greater than available space. Necessary: "
-    #        + str(round(necessarySpace, 2)) + " GB"
-    #        + " Available: "
-    #        + str(round(availableSpace, 2)) + " GB", file)
-    #    log(1, "main: Function will now terminate", file)
-    #    sys.exit()
-    # else:
-    #    log(0, "main: Available space: " + str(round(availableSpace, 2)) + " GB" + " Necessary space: " + str(
-    #        round(necessarySpace, 2)) + " GB", file)
-    #    log(0, "main: There is enough space. Files can be copied", file)
-    #    cTFRet = createTodayFolder(dictVal, logFileName, destination, file)
-    #    destination = destination + cTFRet[0] + sep()
-    # for frm in src:
-    #    #destination = destination + createTodayFolder(dictVal, logFileName, destination, file)
-    #    log(0, "main: Moving from " + frm + " to " + destination, file)
-    #    #copyFilesAccross_noshutil(frm, destination, cTFRet[1], file)
-    #    copyFilesAcross_withShutil(frm,destination,file,dictVal)
-
-    # if(len(listOfErrors) > 0):
-    #    log(0,"main: There have been " + str(len(listOfErrors)) + " errors captured. Appending to log file ...",file)
-    #    log(0, '', file)
-    #    log(0, '', file)
-    #    log(0,"================>> ERRORS <<===========================",file)
-    #    for err in listOfErrors:
-    #        log(0,err.split("[ERROR]|")[-1],file)
-    #    log(0, "================>> ERRORS <<===========================", file)
-    #    log(0, '', file)
-    #    log(0, '', file)
-
-    # log(0, "main: Operation took: " + str(datetime.datetime.now() - startTime), file)
-    # close log file
-    # openCloseLogFile(logFileName, dictVal, "close", file)
-    # print footer
-    # hdfooter('footer')
-
+        try:
+            tf = processTransfer(dictVal['SYNCHDD_INSTRUCTION_FILE'])
+            tf.run()
+        except:
+            print("HDD is connected but function failed to execute")
 
 ########################################################################################################################
 # MAIN
 ########################################################################################################################
 if __name__ == "__main__":
-    while True:
-        main()
-        time.sleep(2)
+    main()
+    #while True:
+    #    main()
+    #    time.sleep(2)
