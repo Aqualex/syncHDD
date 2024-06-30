@@ -1,8 +1,9 @@
-active,from,newName,compression,to
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,001_photo.jpg,,/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,002_photo.jpg,zip,/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,,zip,/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0
-false,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,test.jpg,,/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0
-false,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,renamed_folder,,/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0
-false,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,zipped_renamed_fld,zip,/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0
-false,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,,zip,/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0
+active,from,newName,compression
+true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,001_photo.jpg,
+true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,002_photo.jpg,zip
+true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,,zip
+true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,,
+true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,test.jpg,
+true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,,
+true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,zipped_renamed_fld,zip
+true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,,zip

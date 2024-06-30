@@ -1,4 +1,4 @@
-########################################################################################################################
+####################################################################################################
 # Author: A.D.
 # Year: 2020
 # Month: April
@@ -12,30 +12,27 @@
 # --SYNCHDD_FROM [path as space delimtied string]
 # --SYNCHDD_TO [path]
 # --SYNCHDD_LOG [path]
+# 
+# CMD Line: 
+# python3 syncHDD.py --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET /media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/ --SYNCHDD_INSTRUCTION_FILE /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/zippingInstructions.csv
 ##
 ##
-########################################################################################################################
+####################################################################################################
 
-########################################################################################################################
+####################################################################################################
 # IMPORT UTILITIES
-########################################################################################################################
-import importlib
+####################################################################################################
+import distutils.dir_util
 import sys
-
+import os 
+import datetime 
+import getopt
+import shutil
+import zipfile
+import psutil
+import time
+import distutils
 import pandas as pd 
-
-from distutils import log as lg
-from distutils import dir_util
-
-listOfErrors = []
-
-for moduleName in ['os', 're', 'time', 'subprocess', 'math', 'datetime', 'distutils', 'sys', 'getopt', 'crontab', 'getpass', 'shutil', 'zipfile']:
-    # print('Importing ' + moduleName + " ... ", end="")
-    try:
-        globals()[moduleName] = importlib.import_module(moduleName)
-    except ModuleNotFoundError:
-        print('FAILED to import module ' + moduleName)
-        sys.exit()
 
 ########################################################################################################################
 # DEFINING CLASSES
@@ -51,12 +48,8 @@ class Switcher(object):
     def SYNCHDD_INSTRUCTION_FILE(self, dv):
         return ' --SYNCHDD_INSTRUCTION_FILE ' + str(dv['SYNCHDD_INSTRUCTION_FILE'])
 
-    def SYNCHDD_FROM(self, dv):
-        SPLIT = dv['SYNCHDD_FROM'].split(' ')
-        if (1 < len(SPLIT)):
-            return ' --SYNCHDD_FROM=' + "\"" + dv['SYNCHDD_FROM'] + "\""
-        else:
-            return ' --SYNCHDD_FROM ' + str(dv['SYNCHDD_FROM'])
+    def SYNCHDD_TARGET(self,dv):
+        return ' --SYNCHDD_TARGET ' + str(dv['SYNCHDD_TARGET'])
 
     def SYNCHDD_TO(self, dv):
         return ' --SYNCHDD_TO ' + str(dv['SYNCHDD_TO'])
@@ -67,30 +60,58 @@ class Switcher(object):
     def VERBOSE(self, dv):
         return ' --verbose ' + str(dv['VERBOSE'])
 
-class timeTheScript():
+class timeTheScript:
     def __init__(self):
         self.startTime = datetime.datetime.now()
 
     def showTimeSpent(self):
         return datetime.datetime.now() - self.startTime
 
-class checkPrerequisites:
+class Disk: 
+    def __init__(self, dictVal):
+        self.diskName = dictVal['SYNCHDD_TARGET']
+        self.daysToKeep = dictVal['SYNCHDD_DAYS_KEEP']
+
     def checkHDDConnected(self):
-        cmd = "df -h | grep 9bd13f23-12de-45f5-8a91-4508aa2cc8c0 | wc -l"
-
-        response = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True)
-
-        if (response.stdout.strip() == '1'):
-            print("External HDD device is connected ... ")
-
+        diskName = self.diskName
+        allPartitions = []
+        for p in psutil.disk_partitions():
+            if (not p.mountpoint == '/') and (not 'snap' in p.mountpoint) and (not 'boot' in p.mountpoint): 
+                allPartitions.append(p.mountpoint)
+            
+        if len([p for p in allPartitions if p in diskName]):
             return True
         else:
             return False
 
+    def todayExists(self):
+        if datetime.datetime.now().strftime("%Y%m%d") in os.listdir(self.diskName):
+            print('Today\'s folder already exists ... ')
+            return True
+        else:
+            return False
+        
+    def removeOldDays(self):
+        base = datetime.datetime.today()
+        datesToKeep = [(base - datetime.timedelta(days=x+1)).strftime('%Y%m%d') for x in range(int(self.daysToKeep))]
+        folderList = [x for x in os.listdir(self.diskName) if not x.startswith('.')]
+        toRemove = [x for x in folderList if x not in datesToKeep]
+
+        if len(toRemove): 
+            for dir in toRemove: 
+                dirname = self.diskName + dir
+                dirname = dirname + '/' if dirname[-1] == '/' else dirname
+                try: 
+                    print('Removing directory ' + dirname)
+                    shutil.rmtree(dirname)
+                    print('Direcotry has been removed ')
+                except: 
+                    print('Failed to remove directory: ' + dirname)
+
 class processTransfer:
-    def __init__(self, instrFPath):
-        self.instructionFile = self.getInstructionsFromFile(instrFPath)
+    def __init__(self, dictVal):
+        self.instructionFile = self.getInstructionsFromFile(dictVal['SYNCHDD_INSTRUCTION_FILE'])
+        self.destination = dictVal['SYNCHDD_TARGET']
 
     def getInstructionsFromFile(self, tDest):
         # return self.appendAvailableSpace(pd.read_csv(tDest))
@@ -99,61 +120,94 @@ class processTransfer:
         return res 
     
     def run(self):
-        df = self.instructionFile 
+        df = self.instructionFile
+        df['necessarySpaceInGB'] = [None] * len(df)
+ 
+        for index, row in df.iterrows():
+            df.loc[index] = self.getNecessarySpace(row)
 
-        for dest in list(df['to'].unique()): 
-            subset = df[df['to'] == dest]
-            subset['necessarySpaceInGB'] = [None] * len(df)
+        availableSpace = self.getAvailableSpace(self.destination)
 
-            for index, row in subset.iterrows():
-                subset.loc[index] = self.getNecessarySpace(row)
+        nSpace = sum(list(df['necessarySpaceInGB']))
 
-            nSpace = sum(list(subset['necessarySpaceInGB']))
-            availableSpace = self.getAvailableSpace(dest)
+        if (nSpace >= availableSpace): 
+            print('Not enough space on device to copy the files! Device: ' + dest)
+        else:
+            print('Space on Device [' + str(availableSpace) +'] Necessary Space [' + str(nSpace) +'] PASS')
+            self.copyFiles() 
 
-            if (nSpace >= availableSpace): 
-                print('Not enough space on device to copy the files! Device: ' + dest)
-            else:
-                print('Space on Device [' + str(availableSpace) +'] Necessary Space [' + str(nSpace) +'] PASS')
-                self.copyFiles()
-            
-            
     def copyFiles(self):
         instructionFile = self.instructionFile
         crtDate = datetime.datetime.now().strftime("%Y%m%d")
 
         for index,row in instructionFile.iterrows():
-            if row.compression == 'zip':
+            if os.path.isdir(row['from']):
                 if pd.isna(row.newName):
-                    fName = row['from'].split('/')[-1] 
-                    newZip = '/' + os.path.join(*row['from'].split('/')[:-1]) + '/' + fName.split('.')[0] + '.zip'
+                    if row.compression == 'zip': 
+                        rFrom = row['from'][:-1] if row['from'][-1] == '/' else row['from']
+                        newDest = self.destination + crtDate + '/' + rFrom.split('/')[-1]
+                        shutil.make_archive(newDest, 'zip', row['from'])
+                    else: 
+                        rFrom = row['from'][:-1] if row['from'][-1] == '/' else row['from']
+                        newDest = self.destination + crtDate + '/' + rFrom.split('/')[-1] + '/'
+                        distutils.dir_util.copy_tree(row['from'], newDest)
                 else: 
-                    newZip = os.path.join(*[row.to, crtDate , row.newName.split('.')[0] + '.zip'])
-                
-                try:
-                    print(row['from'] + ' will be zipped and copied to ' + newZip)
-                    zipfile.ZipFile(newZip, mode='w').write(row['from'])
-                except: 
-                    print('Failed to zip ' + row['from'] + ' to ' + newZip)
+                    if row.compression == 'zip': 
+                        newDest = self.destination + crtDate + '/' + row.newName
+                        shutil.make_archive(newDest, 'zip', row['from'])
+                        print('dir w name zip')
+                    else: 
+                        newDirName = self.destination + crtDate + '/' + row.newName + '/'
+                        os.makedirs(newDirName, exist_ok=True)
+                        print('Copying folder ' + row['from'] + ' to ' + newDirName)
+                        distutils.dir_util.copy_tree(row['from'], newDirName)
             else:
-                if os.path.isdir(row['from']): 
-                    print('This is a dir')
-                else:
-                    print('This is a file')
-                    try:
-                        bDir = row.to + '/' + crtDate + '/'
-                        newF = bDir + row.newName
+                if pd.isna(row.newName):
+                    if row.compression == 'zip':
+                        fName = row['from'].split('/')[-1]
+                        newDest = self.destination + crtDate + '/' + fName.split('.')[0] + '.zip'
 
-                        os.makedirs(row.to + '/' + crtDate + '/', exist_ok=True)
+                        try:
+                            os.makedirs(os.path.join('/', *newDest.split('/')[:-1]), exist_ok=True)
 
-                        if not os.path.isfile(newF):
-                            shutil.copy(row['from'], row.to + '/' + crtDate + '/' + row.newName)
-                        else: 
-                            print('File ' + newF + ' already exists! Skipping ...')
-                    except: 
-                        print('Failed to copy from ' + row['from'] + ' to ' + newName)
+                            if not os.path.exists(newDest): 
+                                print('Copying file ' + row['from'] + ' to ' + newDest)
+                                zipfile.ZipFile(newDest, mode='w').write(row['from'])
+                            else: 
+                                print('File already exists! Skipping ... ')
+                        except: 
+                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                    else: 
+                        newDest = self.destination + crtDate + '/' + row['from'].split('/')[-1]
+                        shutil.copy(row['from'], newDest)
+                
+                else: 
+                    if row.compression == 'zip': 
+                        newDest = os.path.join(*[self.destination, crtDate , row.newName.split('.')[0] + '.zip'])
 
-        
+                        try:
+                            os.makedirs(os.path.join('/', *newDest.split('/')[:-1]), exist_ok=True)
+
+                            if not os.path.exists(newDest): 
+                                print('Copying file ' + row['from'] + ' to ' + newDest)
+                                zipfile.ZipFile(newDest, mode='w').write(row['from'])
+                            else: 
+                                print('File already exists! Skipping ... ')
+                        except: 
+                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                    else: 
+                        newDest = self.destination + crtDate + '/' + row.newName
+
+                        try:
+                            os.makedirs(os.path.join('/', *newDest.split('/')[:-1]), exist_ok=True)
+                            if not os.path.exists(newDest): 
+                                print('Copying file ' + row['from'] + ' to ' + newDest)
+                                shutil.copy(row['from'], newDest)
+                            else: 
+                                print('File already exists! Skipping ... ')
+                        except: 
+                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+
     def convertBytesToMb(self, bytesValue):
         return (bytesValue / 1000000.0) / 1024.0
 
@@ -170,13 +224,9 @@ class processTransfer:
                         total_size += os.path.getsize(fp)
 
                 row['necessarySpaceInGB'] = self.convertBytesToMb(total_size)
-
                 return row 
             else: 
-                print('Dealing with a file')
-
                 row['necessarySpaceInGB'] = self.convertBytesToMb(os.path.getsize(row['from']))
-                
                 return row 
         else:
             print('path does not exist ')
@@ -189,181 +239,18 @@ class processTransfer:
 ########################################################################################################################
 # DEFINING FUNCTIONS
 ########################################################################################################################
-def hdfooter(vr):
-    if (vr == 'header'):
-        print('')
-        print('========== STARTING FUNCTION ==========')
-        print('')
-    else:
-        print('')
-        print('========== **ENDING FUNCTION ==========')
-        print('')
-
-def getTimestamp():
-    return datetime.datetime.now().strftime("%Y.%m.%dD%H.%M.%S.%f")
-
-def getDate():
-    return datetime.datetime.now().strftime("%Y.%m.%d")
-
 def sep():
     if sys.platform.startswith('linux'):
         return '/'
     if sys.platform.startswith('win'):
         return '\\'
 
-def createLogMessage(lvl, message):
-    if (lvl == 0):
-        prefix = "[*INFO]| "
-    elif (lvl == 1):
-        prefix = "[ERROR]| "
-    else:
-        prefix = "[DEBUG]| "
-    return prefix + getTimestamp() + "| " + message
-
-def openCloseLogFile(LFN, dV, action, file=None):
-    # function to open the logfile and print the header and footer
-    # create log file in specified location
-    logFilePath = dV['SYNCHDD_LOG']
-    logFilePath = logFilePath + "/" + LFN
-    if action == "open":
-        if os.path.exists(logFilePath):
-            # if file exists open to append new log messages
-            file = open(logFilePath, "a+")
-            file.write('========== STARTING FUNCTION ==========\n')
-            return file
-        else:
-            # if files does not exist, create it.
-            file = open(logFilePath, "w")
-            file.write('========== STARTING FUNCTION ==========\n')
-            return file
-    else:
-        file.write('========== **ENDING FUNCTION ==========\n\n')
-        file.close()
-
-def log(lvl, message, file):
-    # create log message
-    message = createLogMessage(lvl, message)
-    # print to file
-    print(message)
-    if (lvl == 1):
-        global listOfErrors
-        listOfErrors.append(message)
-    file.write(message)
-    file.write('\n')
-
-def convertBytesToMb(bytesValue):
-    return (bytesValue / 1000000.0) / 1024.0
-
-def return_date_like_folders(fld):
-    res = []
-    for fname in fld:
-        if (re.match(r"\d+\.\d+\.\d+", fname)):
-            res.append(fname)
-    return res
-
-def removeDays(path, dV, file):
-    # check if SYNCHDD_DAYS_KEEP is defined and only keep the data copied for
-    # thos days
-    startTime = datetime.datetime.now()
-    log(0, "removeDays: Removing data older than " +
-        dV['SYNCHDD_DAYS_KEEP'] + " days from " + path, file)
-    dt = return_date_like_folders(os.listdir(path))
-    thresholdDate = (datetime.datetime.today() - datetime.timedelta(days=int(dV['SYNCHDD_DAYS_KEEP']))).strftime(
-        '%Y.%m.%d')
-    for i in dt:
-        if (datetime.datetime.strptime(i, '%Y.%m.%d') < datetime.datetime.strptime(thresholdDate, "%Y.%m.%d")):
-            try:
-                log(0, "removeDays: Attempting to remove: " + path + i + "/", file)
-                dir_util.remove_tree(path + i + "/")
-            except OSError as e:
-                log(1, "removeDays: Failed to delete directory [" + (
-                    path + i + "/") + "] with error: " + e, file)
-
-def getNecessarySpace(path, file):
-    log(0, "getNecessarySpace: Getting necessary space for " + path, file)
-    total_size = 0
-    for dirpath, dirnames, filenames in os.walk(path):
-        for f in filenames:
-            fp = os.path.join(dirpath, f)
-            total_size += os.path.getsize(fp)
-    return convertBytesToMb(total_size)
-
-def getAvailableSpace(path, file):
-    # log(2,"getAvailableSpace: Getting available space ...",file)
-    return convertBytesToMb(os.statvfs(path).f_frsize * os.statvfs(path).f_bavail)
-
-def createTodayFolder(dictVal, logFileName, path, file):
-    folderName = datetime.datetime.now().strftime("%Y.%m.%d")
-    updateType = False
-    # list folder in directory and check if fodler for today already exists
-    if not folderName in os.listdir(path):
-        log(0, "createTodayFolder: Creating folder: " +
-            folderName + " in " + path, file)
-        try:
-            os.mkdir(path + folderName)
-        except OSError:
-            log(2, "createTodayFolder: Failed to create folder " +
-                folderName + " in " + path, file)
-        else:
-            log(0, "createTodayFolder: Successfully created folder " +
-                folderName + " in " + path, file)
-    else:
-        log(1, "createTodayFolder: Folder already exists. Copying will be set to update", file)
-        updateType = True
-    return [folderName, updateType]
-
-def createPath(src, root, dest, dV, file):
-    # if the destination doesn't have / add it
-    if (dest[-1] != "/"):
-        log(0, "createPath: Adding / to " + dest, file)
-        dest = dest + "/"
-    # Create the path to be created
-    dest = dest + root.split(src)[-1] + "/"
-    if (not os.path.exists(dest)):
-        if dV['VERBOSE']:
-            log(0, "createPath: Directory doesn't exists. Creating " + dest, file)
-        try:
-            os.makedirs(dest, exist_ok=True)
-            return dest
-        except OSError as e:
-            log(1, "createPath: Failed to create folder" +
-                dest + ' with error: ' + e.strerror, file)
-            return ''
-    else:
-        return dest
-
-def copyFilesAcross_withShutil(source, destination):
-    if os.path.isdir(source):
-     # function to copy files accross using shutil instead
-        for root, dirs, files in os.walk(source, topdown=True, followlinks=False):
-            for fl in files:
-                # create file name
-                fileFrom = root + "/" + fl
-                # create destination path
-                dest = createPath(source, root, destination, dV, file)
-                dest = [(dest + fl) if (not dest == '') else dest][0]
-                try:
-                    if dV['VERBOSE']:
-                        log(0, "copyFilesAcross: Copying file " +
-                            fileFrom + " to " + dest + " ...", file)
-                        log(0, "copyFileAcross: Copied " +
-                            shutil.copy(fileFrom, dest), file)
-                    else:
-                        shutil.copy(fileFrom, dest)
-                except OSError as e:
-                    log(1, "Failed to copy " + fileFrom + " to " +
-                        (dest, '<null>')[dest == ''], file)
-        
-
 def getProgParams(arg, parName):
     # function to check if env var are defined if not take from command line
     # env variables have priority
     if os.getenv(parName) is None:
-        # print('getProgParams: Environment Variable Does Not Exist -> For variable '+ parName +' setting to ' + arg)
         return arg
     else:
-        # print('getProgParams: Environment Variable Exists -> For variable '+ parName +' setting to ' + os.getenv(parName))
-        #return os.getenv(parName)
         return arg
 
 def getExecutablePath():
@@ -380,11 +267,10 @@ def getCmdLineArguments():
     # function to create a dictionary of arguments passed from the cmdline
     dictVal = {}  # Creating an empty dictionary
     argv = sys.argv[1:]
-    # dictVal['execLine'] = ' '.join([sys.executable] + getExecutablePath() + argv)
-    dictVal['VERBOSE'] = 0
+
     try:
-        opts, args = getopt.getopt(argv, "hd:f:l:v:", [
-                                   "SYNCHDD_DAYS_KEEP=", "SYNCHDD_INSTRUCTION_FILE=", "SYNCHDD_LOG=", "verbose="])
+        opts, args = getopt.getopt(argv, "hd:f:t:", [
+                                   "SYNCHDD_DAYS_KEEP=", "SYNCHDD_INSTRUCTION_FILE=", "SYNCHDD_TARGET="])
     except getopt.GetoptError:
         print('getCmdLineArguments: Failed to get command line arguments ...')
         sys.exit(2)
@@ -393,13 +279,12 @@ def getCmdLineArguments():
             print(
                 "\nHelp Message:\nsyncHDD.py --SYNCHDD_DAYS_KEEP [integer] --SYNCHDD_FROM [path] --SYNCHDD_TO [path] --SYNCHDD_LOG [path]\n")
             sys.exit()
+        elif opt in ("-t", "--SYNCHDD_TARGET"):
+            dictVal['SYNCHDD_TARGET'] = getProgParams(arg, 'SYNCHDD_TARGET')
         elif opt in ("-d", "--SYNCHDD_DAYS_KEEP"):
-            dictVal['SYNCHDD_DAYS_KEEP'] = getProgParams(
-                arg, 'SYNCHDD_DAYS_KEEP')
+            dictVal['SYNCHDD_DAYS_KEEP'] = getProgParams(arg, 'SYNCHDD_DAYS_KEEP')
         elif opt in ("-f", "--SYNCHDD_INSTRUCTION_FILE"):
             dictVal['SYNCHDD_INSTRUCTION_FILE'] = getProgParams(arg, 'SYNCHDD_INSTRUCTION_FILE')
-        elif opt in ("-l", "--SYNCHDD_LOG"):
-            dictVal['SYNCHDD_LOG'] = getProgParams(arg, 'SYNCHDD_LOG')
         elif opt in ("-v", "--verbose"):
             prm = getProgParams(arg, 'verbose')
             prm = '0' if ('' == prm) else prm
@@ -416,49 +301,28 @@ def getCmdLineArguments():
     
     return dictVal
 
-def addToCron(eL, dV, file):
-    # there are some errors in here that I need to sort out
-    # seems to add the jobs quite a few times
-    # also seems to change the scheduling for other jobs
-    # function to add this job to the cron job if on linux
-    log(0, 'addToCron: Attempting to add a new job to cron', file)
-    myCron = crontab.CronTab(user=getpass.getuser())
-    scriptName = dV['execLine'].split(' ')[1].split('/')[-1]
-    jobExists = False
-    for job in myCron:
-        if job.comment == scriptName:
-            jobExists = not jobExists
-    if not jobExists:
-        log(0, 'addToCron: Adding ' + dV['execLine'] + ' to crontab ...', file)
-        job = myCron.new(command=dV['execLine'], comment='syncHDD.py')
-        job.hour.on(23)
-        try:
-            myCron.write()
-            log(0, 'Job has been successfully added to crontab ', file)
-        except OSError as errorMessage:
-            log(1, 'addToCron: Failed to write to crontab with OSError -> ' +
-                str(errorMessage), file)
-    else:
-        log(0, 'addToCron: Job [' + scriptName + '] already exists', file)
-
 def main():
     dictVal = getCmdLineArguments()
 
     timeCheck = timeTheScript()
-    chPre = checkPrerequisites()
+    disk = Disk(dictVal)
 
-    if (chPre.checkHDDConnected()):
+    if (disk.checkHDDConnected() and not disk.todayExists()):
         try:
-            tf = processTransfer(dictVal['SYNCHDD_INSTRUCTION_FILE'])
+            disk.removeOldDays()
+
+            tf = processTransfer(dictVal)
             tf.run()
         except:
             print("HDD is connected but function failed to execute")
+    
+    print('Script took: ' + str(timeCheck.showTimeSpent()))
 
 ########################################################################################################################
 # MAIN
 ########################################################################################################################
 if __name__ == "__main__":
-    main()
-    #while True:
-    #    main()
-    #    time.sleep(2)
+    #main()
+    while True:
+        main()
+        time.sleep(5)
