@@ -32,6 +32,7 @@ import zipfile
 import psutil
 import time
 import distutils
+import subprocess
 import pandas as pd 
 
 ########################################################################################################################
@@ -236,6 +237,16 @@ class processTransfer:
     def getAvailableSpace(self, pth):
         return self.convertBytesToMb(os.statvfs(pth).f_frsize * os.statvfs(pth).f_bavail)
 
+class Mail:
+    def __init__(self, subject: str, body: str):
+        self.subject = subject 
+        self.body = body
+
+    def send(self):
+        body_str_encoded_to_byte = self.body.encode()
+        return_stat = subprocess.run([f"mail", f"-s {self.subject}", "rdanutalexandru@gmail.com"], input=body_str_encoded_to_byte)
+        print(return_stat) 
+
 ########################################################################################################################
 # DEFINING FUNCTIONS
 ########################################################################################################################
@@ -317,6 +328,9 @@ def main():
             print("HDD is connected but function failed to execute")
     
     print('Script took: ' + str(timeCheck.showTimeSpent()))
+
+    mail = Mail('Files have been copied to HDD', '\n\nThe files have been automatically copied to external HDD.\n\n')
+    mail.send()
 
 ########################################################################################################################
 # MAIN
