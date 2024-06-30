@@ -1,7 +1,16 @@
+
 # syncHDD 
 
 ## Description 
-I had a simple problem: periodically copy a number of files from my local machine to an external HDD. 
+I had a simple problem -> periodically copy a number of files from my local machine to an external HDD
+It should have been a simple task, but after starting to type some code to see how it works I started getting few ideas to improve the script: 
+
+ 1. Script should write permanently and check if the external HDD is connected
+ 2. When HDD connected check if today's date exists and if not, start copying the files across
+ 3. Before copying, check if old days are present and delete those to free space
+ 4. Check to see if the external HDD has enough space to copy the files across
+ 5. When copying the files allow for new file/folder names or zipping the files and folders if necessary
+ 6. Add the job to cron with a @reboot tag to start the scrip after system reboot
 
 ## Environment Variables 
 * **SYNCHDD\_DAYS\_KEEP**        - number of days you want to keep on your hdd
@@ -11,4 +20,8 @@ I had a simple problem: periodically copy a number of files from my local machin
 
 
 ## Startup Example 
-```python3 syncHDD.py --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_FROM="path/one path/two" --SYNCHDD_TO path/to --SYNCHDD_LOG path/logFile --verbose 1```  
+```
+python3 -u /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/syncHDD.py
+        --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET /media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/test_folder/\
+        --SYNCHDD_INSTRUCTION_FILE /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/zippingInstructions.csv\
+        --SYNCHDD_ADD_TO_CRON True >> /tmp/syncHDD_test.log 2>&1
