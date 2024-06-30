@@ -1,20 +1,23 @@
 ####################################################################################################
 # Author: A.D.
-# Year: 2020
+# Year: 2024
 # Month: April
+#
 # Description: This script is meant to update the HDD given the location from
-# the HDD needs to be synced and where it should copy the files.
-# The script will check how much space is on the external HDD
-# will create a folder with today's date and copy the files in
-# that folder
+#                the HDD needs to be synced and where it should copy the files.
+#              The script will check how much space is on the external HDD
+#                will create a folder with today's date and copy the files in
+#                that folder
 ##
 # Example Call: python3 syncHDD.py --SYNCHDD_DAYS_KEEP [integer]
-# --SYNCHDD_FROM [path as space delimtied string]
-# --SYNCHDD_TO [path]
-# --SYNCHDD_LOG [path]
+# --SYNCHDD_INSTRUCTION_FILE [path as space delimtied string]
+# --SYNCHDD_TARGET [path]
 # 
 # CMD Line: 
-# python3 syncHDD.py --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET /media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/ --SYNCHDD_INSTRUCTION_FILE /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/zippingInstructions.csv
+# python3 -u /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/syncHDD.py 
+#         --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET /media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/ 
+#         --SYNCHDD_INSTRUCTION_FILE /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/zippingInstructions.csv 
+#           >> /tmp/syncHDD_test.log 2>&1
 ##
 ##
 ####################################################################################################
@@ -32,12 +35,11 @@ import zipfile
 import psutil
 import time
 import distutils
-import subprocess
 import pandas as pd 
 
-########################################################################################################################
+####################################################################################################
 # DEFINING CLASSES
-########################################################################################################################
+####################################################################################################
 class Switcher(object):
     def getMethod(self, prm, dv):
         method = getattr(self, prm, '')
@@ -51,15 +53,6 @@ class Switcher(object):
 
     def SYNCHDD_TARGET(self,dv):
         return ' --SYNCHDD_TARGET ' + str(dv['SYNCHDD_TARGET'])
-
-    def SYNCHDD_TO(self, dv):
-        return ' --SYNCHDD_TO ' + str(dv['SYNCHDD_TO'])
-
-    def SYNCHDD_LOG(self, dv):
-        return ' --SYNCHDD_LOG ' + str(dv['SYNCHDD_LOG'])
-
-    def VERBOSE(self, dv):
-        return ' --verbose ' + str(dv['VERBOSE'])
 
 class timeTheScript:
     def __init__(self):
@@ -147,21 +140,32 @@ class processTransfer:
                     if row.compression == 'zip': 
                         rFrom = row['from'][:-1] if row['from'][-1] == '/' else row['from']
                         newDest = self.destination + crtDate + '/' + rFrom.split('/')[-1]
-                        shutil.make_archive(newDest, 'zip', row['from'])
+                        try:
+                            shutil.make_archive(newDest, 'zip', row['from'])
+                        except: 
+                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
                     else: 
                         rFrom = row['from'][:-1] if row['from'][-1] == '/' else row['from']
                         newDest = self.destination + crtDate + '/' + rFrom.split('/')[-1] + '/'
-                        distutils.dir_util.copy_tree(row['from'], newDest)
+                        try:
+                            distutils.dir_util.copy_tree(row['from'], newDest)
+                        except: 
+                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
                 else: 
                     if row.compression == 'zip': 
                         newDest = self.destination + crtDate + '/' + row.newName
-                        shutil.make_archive(newDest, 'zip', row['from'])
-                        print('dir w name zip')
+                        try: 
+                            shutil.make_archive(newDest, 'zip', row['from'])
+                        except:
+                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
                     else: 
                         newDirName = self.destination + crtDate + '/' + row.newName + '/'
                         os.makedirs(newDirName, exist_ok=True)
                         print('Copying folder ' + row['from'] + ' to ' + newDirName)
-                        distutils.dir_util.copy_tree(row['from'], newDirName)
+                        try:
+                            distutils.dir_util.copy_tree(row['from'], newDirName)
+                        except:
+                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
             else:
                 if pd.isna(row.newName):
                     if row.compression == 'zip':
@@ -173,14 +177,20 @@ class processTransfer:
 
                             if not os.path.exists(newDest): 
                                 print('Copying file ' + row['from'] + ' to ' + newDest)
-                                zipfile.ZipFile(newDest, mode='w').write(row['from'])
+                                try: 
+                                    zipfile.ZipFile(newDest, mode='w').write(row['from'])
+                                except:
+                                    print('Failed to copy file ' + row['from'] + ' to ' + newDest)
                             else: 
                                 print('File already exists! Skipping ... ')
                         except: 
                             print('Failed to copy file ' + row['from'] + ' to ' + newDest)
                     else: 
                         newDest = self.destination + crtDate + '/' + row['from'].split('/')[-1]
-                        shutil.copy(row['from'], newDest)
+                        try: 
+                            shutil.copy(row['from'], newDest)
+                        except: 
+                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
                 
                 else: 
                     if row.compression == 'zip': 
@@ -215,7 +225,6 @@ class processTransfer:
     def getNecessarySpace(self, row):
         if os.path.exists(row['from']): 
             if os.path.isdir(row['from']):
-                print('Dealing with a folder ... ')
             
                 total_size = 0
 
@@ -243,13 +252,11 @@ class Mail:
         self.body = body
 
     def send(self):
-        body_str_encoded_to_byte = self.body.encode()
-        return_stat = subprocess.run([f"mail", f"-s {self.subject}", "rdanutalexandru@gmail.com"], input=body_str_encoded_to_byte)
-        print(return_stat) 
+        print('If e-mail client is configured. This would send an alert e-mail ...')
 
-########################################################################################################################
+####################################################################################################
 # DEFINING FUNCTIONS
-########################################################################################################################
+####################################################################################################
 def sep():
     if sys.platform.startswith('linux'):
         return '/'
@@ -324,19 +331,17 @@ def main():
 
             tf = processTransfer(dictVal)
             tf.run()
+
+            mail = Mail('Files have been copied to HDD', '\n\nThe files have been automatically copied to external HDD.\n\n')
+            mail.send()
         except:
             print("HDD is connected but function failed to execute")
     
     print('Script took: ' + str(timeCheck.showTimeSpent()))
-
-    mail = Mail('Files have been copied to HDD', '\n\nThe files have been automatically copied to external HDD.\n\n')
-    mail.send()
-
-########################################################################################################################
+####################################################################################################
 # MAIN
-########################################################################################################################
+####################################################################################################
 if __name__ == "__main__":
-    #main()
     while True:
         main()
-        time.sleep(5)
+        time.sleep(60)
