@@ -21,7 +21,8 @@ It should have been a simple task, but after starting to type some code to see h
 
 ## Startup Example 
 ```
-python3 -u /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/syncHDD.py
-        --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET /media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/test_folder/\
-        --SYNCHDD_INSTRUCTION_FILE /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/zippingInstructions.csv\
+python3 -u <path>/syncHDD.py
+        --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET <path_to_device>\
+        --SYNCHDD_INSTRUCTION_FILE <path>/zippingInstructions.csv\
         --SYNCHDD_ADD_TO_CRON True >> /tmp/syncHDD_test.log 2>&1
+```
