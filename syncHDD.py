@@ -15,9 +15,9 @@
 # 
 # CMD Line: 
 # python3 -u /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/syncHDD.py 
-#         --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET /media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/ 
+#         --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET /media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/test_folder/ 
 #         --SYNCHDD_INSTRUCTION_FILE /media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/zippingInstructions.csv 
-#           >> /tmp/syncHDD_test.log 2>&1
+#         --SYNCHDD_ADD_TO_CRON True >> /tmp/syncHDD_test.log 2>&1
 ##
 ##
 ####################################################################################################
@@ -35,7 +35,9 @@ import zipfile
 import psutil
 import time
 import distutils
-import pandas as pd 
+import pandas as pd
+
+from crontab import CronTab
 
 ####################################################################################################
 # DEFINING CLASSES
@@ -53,6 +55,9 @@ class Switcher(object):
 
     def SYNCHDD_TARGET(self,dv):
         return ' --SYNCHDD_TARGET ' + str(dv['SYNCHDD_TARGET'])
+    
+    def SYNCHDD_ADD_TO_CRON(self,dv):
+        return ' --SYNCHDD_ADD_TO_CRON ' + str(dv['SYNCHDD_ADD_TO_CRON'])
 
 class timeTheScript:
     def __init__(self):
@@ -141,6 +146,7 @@ class processTransfer:
                         rFrom = row['from'][:-1] if row['from'][-1] == '/' else row['from']
                         newDest = self.destination + crtDate + '/' + rFrom.split('/')[-1]
                         try:
+                            print('Copying ',row['from'],' to ',newDest)
                             shutil.make_archive(newDest, 'zip', row['from'])
                         except: 
                             print('Failed to copy file ' + row['from'] + ' to ' + newDest)
@@ -148,6 +154,7 @@ class processTransfer:
                         rFrom = row['from'][:-1] if row['from'][-1] == '/' else row['from']
                         newDest = self.destination + crtDate + '/' + rFrom.split('/')[-1] + '/'
                         try:
+                            print('Copying ',row['from'],' to ',newDest)
                             distutils.dir_util.copy_tree(row['from'], newDest)
                         except: 
                             print('Failed to copy file ' + row['from'] + ' to ' + newDest)
@@ -155,6 +162,7 @@ class processTransfer:
                     if row.compression == 'zip': 
                         newDest = self.destination + crtDate + '/' + row.newName
                         try: 
+                            print('Copying ',row['from'],' to ',newDest)
                             shutil.make_archive(newDest, 'zip', row['from'])
                         except:
                             print('Failed to copy file ' + row['from'] + ' to ' + newDest)
@@ -188,6 +196,7 @@ class processTransfer:
                     else: 
                         newDest = self.destination + crtDate + '/' + row['from'].split('/')[-1]
                         try: 
+                            print('Copying ',row['from'],' to ',newDest)
                             shutil.copy(row['from'], newDest)
                         except: 
                             print('Failed to copy file ' + row['from'] + ' to ' + newDest)
@@ -287,8 +296,8 @@ def getCmdLineArguments():
     argv = sys.argv[1:]
 
     try:
-        opts, args = getopt.getopt(argv, "hd:f:t:", [
-                                   "SYNCHDD_DAYS_KEEP=", "SYNCHDD_INSTRUCTION_FILE=", "SYNCHDD_TARGET="])
+        opts, args = getopt.getopt(argv, "hd:f:t:c:", [
+                                   "SYNCHDD_DAYS_KEEP=", "SYNCHDD_INSTRUCTION_FILE=", "SYNCHDD_TARGET=", "SYNCHDD_ADD_TO_CRON="])
     except getopt.GetoptError:
         print('getCmdLineArguments: Failed to get command line arguments ...')
         sys.exit(2)
@@ -301,6 +310,8 @@ def getCmdLineArguments():
             dictVal['SYNCHDD_TARGET'] = getProgParams(arg, 'SYNCHDD_TARGET')
         elif opt in ("-d", "--SYNCHDD_DAYS_KEEP"):
             dictVal['SYNCHDD_DAYS_KEEP'] = getProgParams(arg, 'SYNCHDD_DAYS_KEEP')
+        elif opt in ("-d", "--SYNCHDD_ADD_TO_CRON"):
+            dictVal['SYNCHDD_ADD_TO_CRON'] = getProgParams(arg, 'SYNCHDD_ADD_TO_CRON')    
         elif opt in ("-f", "--SYNCHDD_INSTRUCTION_FILE"):
             dictVal['SYNCHDD_INSTRUCTION_FILE'] = getProgParams(arg, 'SYNCHDD_INSTRUCTION_FILE')
         elif opt in ("-v", "--verbose"):
@@ -336,6 +347,21 @@ def main():
             mail.send()
         except:
             print("HDD is connected but function failed to execute")
+
+    if dictVal['SYNCHDD_ADD_TO_CRON']:
+        cmd = sys.executable + ' ' +  os.path.abspath(__file__) + ' --SYNCHDD_DAYS_KEEP ' + dictVal['SYNCHDD_DAYS_KEEP'] + ' --SYNCHDD_INSTRUCTION_FILE ' + dictVal['SYNCHDD_INSTRUCTION_FILE'] + ' --SYNCHDD_TARGET ' + dictVal['SYNCHDD_TARGET'] + " >> /tmp/SYNCHDD_script.log 2>&1 &"
+
+        print('Following line will be added to cron: ' + cmd)
+        
+        cron = CronTab(user = os.getlogin())
+        isJob = list(cron.find_command(cmd))
+        if not isJob:
+            print('Adding job to cron ...')
+            job = cron.new(command=cmd)
+            job.every_reboot()
+            cron.write()
+        else:
+            print('Job already exists ...')
     
     print('Script took: ' + str(timeCheck.showTimeSpent()))
 ####################################################################################################

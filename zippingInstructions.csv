@@ -1,9 +1,9 @@
 active,from,newName,compression
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,001_photo.jpg,
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,002_photo.jpg,zip
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,,zip
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,,
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,test.jpg,
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,,
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,zipped_renamed_fld,zip
-true,/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD_test_folder/test_folder/,,zip
+false,/path/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,001_photo.jpg,
+true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/books_tutorials/,,zip
+true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/pastYears/,,
+true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/poze/,,zip
+true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/20201029_HUAWEI_MATE_20_PRO.zip,,
+true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/FromWorkLaptop.zip,,
+true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/samsung_files.zip,,
+true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/University.zip,,
