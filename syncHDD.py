@@ -343,6 +343,8 @@ def main():
             tf = processTransfer(dictVal)
             tf.run()
 
+            print('Script took: ' + str(timeCheck.showTimeSpent()))
+
             mail = Mail('Files have been copied to HDD', '\n\nThe files have been automatically copied to external HDD.\n\n')
             mail.send()
         except:
@@ -360,10 +362,7 @@ def main():
             job = cron.new(command=cmd)
             job.every_reboot()
             cron.write()
-        else:
-            print('Job already exists ...')
     
-    print('Script took: ' + str(timeCheck.showTimeSpent()))
 ####################################################################################################
 # MAIN
 ####################################################################################################
