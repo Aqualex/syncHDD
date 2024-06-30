@@ -1,9 +1,9 @@
 active,from,newName,compression
 false,/path/syncHDD_test_folder/001_pht_YiAMI8RNIitO.jpg,001_photo.jpg,
-true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/books_tutorials/,,zip
-true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/pastYears/,,
-true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/poze/,,zip
-true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/20201029_HUAWEI_MATE_20_PRO.zip,,
-true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/FromWorkLaptop.zip,,
-true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/samsung_files.zip,,
-true,/media/alex/1e3dc412-6dd1-4cf2-970f-76237a235bb3/University.zip,,
+true,/path/dir/,,zip
+true,/path/dir2/,,
+true,/path/dir3/,dir_new_3,zip
+true,/path/file1.zip,,
+true,/path/file2.zip,,
+true,/path/file3.zip,,
+true,/path/file4.zip,,
