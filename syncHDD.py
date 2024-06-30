@@ -349,7 +349,7 @@ def main():
             print("HDD is connected but function failed to execute")
 
     if dictVal['SYNCHDD_ADD_TO_CRON']:
-        cmd = sys.executable + ' ' +  os.path.abspath(__file__) + ' --SYNCHDD_DAYS_KEEP ' + dictVal['SYNCHDD_DAYS_KEEP'] + ' --SYNCHDD_INSTRUCTION_FILE ' + dictVal['SYNCHDD_INSTRUCTION_FILE'] + ' --SYNCHDD_TARGET ' + dictVal['SYNCHDD_TARGET'] + " >> /tmp/SYNCHDD_script.log 2>&1 &"
+        cmd = sys.executable + ' -u ' +  os.path.abspath(__file__) + ' --SYNCHDD_DAYS_KEEP ' + dictVal['SYNCHDD_DAYS_KEEP'] + ' --SYNCHDD_INSTRUCTION_FILE ' + dictVal['SYNCHDD_INSTRUCTION_FILE'] + ' --SYNCHDD_TARGET ' + dictVal['SYNCHDD_TARGET'] + '--SYNCHDD_ADD_TO_CRON False ' + ' >> /tmp/SYNCHDD_script.log 2>&1 &'
 
         print('Following line will be added to cron: ' + cmd)
         
@@ -371,3 +371,4 @@ if __name__ == "__main__":
     while True:
         main()
         time.sleep(60)
+        
