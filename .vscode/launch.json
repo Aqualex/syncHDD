@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
-      "args" : ["--SYNCHDD_DAYS_KEEP", "7", "--SYNCHDD_INSTRUCTION_FILE", "/media/alex/cf35aee0-faeb-40bb-adac-88595e8f71fe/alex_hdd/crtFolder/github/syncHDD/zippingInstructions.csv", "--SYNCHDD_TARGET", "/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/", "--SYNCHDD_ADD_TO_CRON", "True"]
+      "args" : ["--SYNCHDD_DAYS_KEEP", "7", "--SYNCHDD_INSTRUCTION_FILE", "/home/alex/Desktop/sync_hdd_zipping_instruction.csv", "--SYNCHDD_TARGET", "/media/alex/9bd13f23-12de-45f5-8a91-4508aa2cc8c0/", "--SYNCHDD_ADD_TO_CRON", "True"]
     }
   ]
 }

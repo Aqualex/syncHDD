@@ -35,6 +35,7 @@ import zipfile
 import psutil
 import time
 import distutils
+import logging
 import pandas as pd
 
 from crontab import CronTab
@@ -85,7 +86,7 @@ class Disk:
 
     def todayExists(self):
         if datetime.datetime.now().strftime("%Y%m%d") in os.listdir(self.diskName):
-            print('Today\'s folder already exists ... ')
+            logging.info('Today\'s folder already exists ... ')
             return True
         else:
             return False
@@ -101,11 +102,11 @@ class Disk:
                 dirname = self.diskName + dir
                 dirname = dirname + '/' if dirname[-1] == '/' else dirname
                 try: 
-                    print('Removing directory ' + dirname)
+                    logging.info('Removing directory ' + dirname)
                     shutil.rmtree(dirname)
-                    print('Direcotry has been removed ')
+                    logging.info('Directory has been removed ')
                 except: 
-                    print('Failed to remove directory: ' + dirname)
+                    logging.error('Failed to remove directory: ' + dirname)
 
 class processTransfer:
     def __init__(self, dictVal):
@@ -130,9 +131,9 @@ class processTransfer:
         nSpace = sum(list(df['necessarySpaceInGB']))
 
         if (nSpace >= availableSpace): 
-            print('Not enough space on device to copy the files! Device: ' + dest)
+            logging.warning('Not enough space on device to copy the files! Device: ' + dest)
         else:
-            print('Space on Device [' + str(availableSpace) +'] Necessary Space [' + str(nSpace) +'] PASS')
+            logging.info('Space on Device [' + str(availableSpace) +'] Necessary Space [' + str(nSpace) +']')
             self.copyFiles() 
 
     def copyFiles(self):
@@ -146,34 +147,34 @@ class processTransfer:
                         rFrom = row['from'][:-1] if row['from'][-1] == '/' else row['from']
                         newDest = self.destination + crtDate + '/' + rFrom.split('/')[-1]
                         try:
-                            print('Copying ',row['from'],' to ',newDest)
+                            logging.info('Copying ' + row['from'] + ' to ' + newDest)
                             shutil.make_archive(newDest, 'zip', row['from'])
                         except: 
-                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                            logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
                     else: 
                         rFrom = row['from'][:-1] if row['from'][-1] == '/' else row['from']
                         newDest = self.destination + crtDate + '/' + rFrom.split('/')[-1] + '/'
                         try:
-                            print('Copying ',row['from'],' to ',newDest)
+                            logging.info('Copying ' + row['from'] + ' to ' + newDest)
                             distutils.dir_util.copy_tree(row['from'], newDest)
                         except: 
-                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                            logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
                 else: 
                     if row.compression == 'zip': 
                         newDest = self.destination + crtDate + '/' + row.newName
                         try: 
-                            print('Copying ',row['from'],' to ',newDest)
+                            logging.info('Copying ',row['from'],' to ',newDest)
                             shutil.make_archive(newDest, 'zip', row['from'])
                         except:
-                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                            logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
                     else: 
                         newDirName = self.destination + crtDate + '/' + row.newName + '/'
                         os.makedirs(newDirName, exist_ok=True)
-                        print('Copying folder ' + row['from'] + ' to ' + newDirName)
+                        logging.info('Copying folder ' + row['from'] + ' to ' + newDirName)
                         try:
                             distutils.dir_util.copy_tree(row['from'], newDirName)
                         except:
-                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                            logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
             else:
                 if pd.isna(row.newName):
                     if row.compression == 'zip':
@@ -184,22 +185,22 @@ class processTransfer:
                             os.makedirs(os.path.join('/', *newDest.split('/')[:-1]), exist_ok=True)
 
                             if not os.path.exists(newDest): 
-                                print('Copying file ' + row['from'] + ' to ' + newDest)
+                                logging.info('Copying file ' + row['from'] + ' to ' + newDest)
                                 try: 
                                     zipfile.ZipFile(newDest, mode='w').write(row['from'])
                                 except:
-                                    print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                                    logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
                             else: 
-                                print('File already exists! Skipping ... ')
+                                logging.warning('File already exists! Skipping ... ')
                         except: 
-                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                            logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
                     else: 
                         newDest = self.destination + crtDate + '/' + row['from'].split('/')[-1]
                         try: 
-                            print('Copying ',row['from'],' to ',newDest)
+                            logging.info('Copying ' + row['from'] + ' to ' + newDest)
                             shutil.copy(row['from'], newDest)
                         except: 
-                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                            logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
                 
                 else: 
                     if row.compression == 'zip': 
@@ -209,24 +210,24 @@ class processTransfer:
                             os.makedirs(os.path.join('/', *newDest.split('/')[:-1]), exist_ok=True)
 
                             if not os.path.exists(newDest): 
-                                print('Copying file ' + row['from'] + ' to ' + newDest)
+                                logging.info('Copying file ' + row['from'] + ' to ' + newDest)
                                 zipfile.ZipFile(newDest, mode='w').write(row['from'])
                             else: 
-                                print('File already exists! Skipping ... ')
+                                logging.warning('File already exists! Skipping ... ')
                         except: 
-                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                            logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
                     else: 
                         newDest = self.destination + crtDate + '/' + row.newName
 
                         try:
                             os.makedirs(os.path.join('/', *newDest.split('/')[:-1]), exist_ok=True)
                             if not os.path.exists(newDest): 
-                                print('Copying file ' + row['from'] + ' to ' + newDest)
+                                logging.info('Copying file ' + row['from'] + ' to ' + newDest)
                                 shutil.copy(row['from'], newDest)
                             else: 
-                                print('File already exists! Skipping ... ')
+                                logging.warning('File already exists! Skipping ... ')
                         except: 
-                            print('Failed to copy file ' + row['from'] + ' to ' + newDest)
+                            logging.error('Failed to copy file ' + row['from'] + ' to ' + newDest)
 
     def convertBytesToMb(self, bytesValue):
         return (bytesValue / 1000000.0) / 1024.0
@@ -248,7 +249,7 @@ class processTransfer:
                 row['necessarySpaceInGB'] = self.convertBytesToMb(os.path.getsize(row['from']))
                 return row 
         else:
-            print('path does not exist ')
+            logging.warning('path does not exist ')
             row['necessarySpaceInGB'] = 0 
             return row 
 
@@ -261,7 +262,7 @@ class Mail:
         self.body = body
 
     def send(self):
-        print('If e-mail client is configured. This would send an alert e-mail ...')
+        logging.info('If e-mail client is configured. This would send an alert e-mail ...')
 
 ####################################################################################################
 # DEFINING FUNCTIONS
@@ -299,7 +300,7 @@ def getCmdLineArguments():
         opts, args = getopt.getopt(argv, "hd:f:t:c:", [
                                    "SYNCHDD_DAYS_KEEP=", "SYNCHDD_INSTRUCTION_FILE=", "SYNCHDD_TARGET=", "SYNCHDD_ADD_TO_CRON="])
     except getopt.GetoptError:
-        print('getCmdLineArguments: Failed to get command line arguments ...')
+        logging.error('getCmdLineArguments: Failed to get command line arguments ...')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
@@ -343,31 +344,39 @@ def main():
             tf = processTransfer(dictVal)
             tf.run()
 
-            print('Script took: ' + str(timeCheck.showTimeSpent()))
+            logging.info('Script took: ' + str(timeCheck.showTimeSpent()))
 
             mail = Mail('Files have been copied to HDD', '\n\nThe files have been automatically copied to external HDD.\n\n')
             mail.send()
         except:
-            print("HDD is connected but function failed to execute")
+            logging.error('HDD is connected but function failed to execute')
 
     if dictVal['SYNCHDD_ADD_TO_CRON']:
-        cmd = sys.executable + ' -u ' +  os.path.abspath(__file__) + ' --SYNCHDD_DAYS_KEEP ' + dictVal['SYNCHDD_DAYS_KEEP'] + ' --SYNCHDD_INSTRUCTION_FILE ' + dictVal['SYNCHDD_INSTRUCTION_FILE'] + ' --SYNCHDD_TARGET ' + dictVal['SYNCHDD_TARGET'] + ' --SYNCHDD_ADD_TO_CRON False ' + ' >> /tmp/SYNCHDD_script.log 2>&1 &'
+        cmd = sys.executable + ' -u ' +  os.path.abspath(__file__) + ' --SYNCHDD_DAYS_KEEP ' + dictVal['SYNCHDD_DAYS_KEEP'] + ' --SYNCHDD_INSTRUCTION_FILE ' + dictVal['SYNCHDD_INSTRUCTION_FILE'] + ' --SYNCHDD_TARGET ' + dictVal['SYNCHDD_TARGET'] + ' --SYNCHDD_ADD_TO_CRON False ' + ' &'
 
-        print('Following line will be added to cron: ' + cmd)
-        
         cron = CronTab(user = os.getlogin())
         isJob = list(cron.find_command(cmd))
         if not isJob:
-            print('Adding job to cron ...')
+            logging.info('Following line will be added to cron: ' + cmd)
+            logging.info('Adding job to cron ...')
             job = cron.new(command=cmd)
             job.every_reboot()
             cron.write()
     
-####################################################################################################
+#################################################################################dd###################
 # MAIN
 ####################################################################################################
 if __name__ == "__main__":
+
+    fileLogName = '/tmp/SYNCHDD_' +  datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + '.log'
+
+    logging.basicConfig(filename=fileLogName, 
+                        level=logging.DEBUG,
+                        format='%(asctime)s | %(levelname)s | %(name)s | %(message)s')
+    
+    logging.info('Starting script ... ')
+
     while True:
         main()
-        time.sleep(60)
+        time.sleep(60*10) # wait 10 minutes before trying again
         
