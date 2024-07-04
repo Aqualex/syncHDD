@@ -86,7 +86,6 @@ class Disk:
 
     def todayExists(self):
         if datetime.datetime.now().strftime("%Y%m%d") in os.listdir(self.diskName):
-            logging.info('Today\'s folder already exists ... ')
             return True
         else:
             return False
