@@ -14,10 +14,7 @@
 # --SYNCHDD_TARGET [path]
 # 
 # CMD Line: 
-# python3 -u path/syncHDD.py 
-#         --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET path_to_device 
-#         --SYNCHDD_INSTRUCTION_FILE path_to_csv.csv 
-#         --SYNCHDD_ADD_TO_CRON True >> /tmp/syncHDD_test.log 2>&1
+# python3 -u path/syncHDD.py --SYNCHDD_DAYS_KEEP 7 --SYNCHDD_TARGET path_to_device --SYNCHDD_INSTRUCTION_FILE path_to_csv.csv --SYNCHDD_ADD_TO_CRON True >> /tmp/syncHDD_test.log 2>&1 & 
 ##
 ##
 ####################################################################################################
@@ -25,7 +22,6 @@
 ####################################################################################################
 # IMPORT UTILITIES
 ####################################################################################################
-import distutils.dir_util
 import sys
 import os 
 import datetime 
@@ -92,8 +88,8 @@ class Disk:
         
     def removeOldDays(self):
         base = datetime.datetime.today()
-        datesToKeep = [(base - datetime.timedelta(days=x+1)).strftime('%Y%m%d') for x in range(int(self.daysToKeep))]
         folderList = [x for x in os.listdir(self.diskName) if not x.startswith('.')]
+        datesToKeep = folderList[(-1) * int(self.daysToKeep):]
         toRemove = [x for x in folderList if x not in datesToKeep]
 
         if len(toRemove): 
@@ -336,7 +332,20 @@ def main():
     timeCheck = timeTheScript()
     disk = Disk(dictVal)
 
-    if (disk.checkHDDConnected() and not disk.todayExists()):
+    if dictVal['SYNCHDD_ADD_TO_CRON']:
+        cmd = sys.executable + ' -u ' +  os.path.abspath(__file__) + ' --SYNCHDD_DAYS_KEEP ' + dictVal['SYNCHDD_DAYS_KEEP'] + ' --SYNCHDD_INSTRUCTION_FILE ' + dictVal['SYNCHDD_INSTRUCTION_FILE'] + ' --SYNCHDD_TARGET ' + dictVal['SYNCHDD_TARGET'] + ' --SYNCHDD_ADD_TO_CRON False ' + ' &'
+
+        cron = CronTab(user = os.getlogin())
+        isJob = list(cron.find_command(cmd))
+        if not isJob:
+            logging.info('Following line will be added to cron: ' + cmd)
+            logging.info('Adding job to cron ...')
+            job = cron.new(command=cmd)
+            job.every_reboot()
+            cron.write()
+
+    # if (disk.checkHDDConnected() and not disk.todayExists()):
+    if (disk.checkHDDConnected()):
         try:
             disk.removeOldDays()
 
@@ -349,18 +358,6 @@ def main():
             mail.send()
         except:
             logging.error('HDD is connected but function failed to execute')
-
-    if dictVal['SYNCHDD_ADD_TO_CRON']:
-        cmd = sys.executable + ' -u ' +  os.path.abspath(__file__) + ' --SYNCHDD_DAYS_KEEP ' + dictVal['SYNCHDD_DAYS_KEEP'] + ' --SYNCHDD_INSTRUCTION_FILE ' + dictVal['SYNCHDD_INSTRUCTION_FILE'] + ' --SYNCHDD_TARGET ' + dictVal['SYNCHDD_TARGET'] + ' --SYNCHDD_ADD_TO_CRON False ' + ' &'
-
-        cron = CronTab(user = os.getlogin())
-        isJob = list(cron.find_command(cmd))
-        if not isJob:
-            logging.info('Following line will be added to cron: ' + cmd)
-            logging.info('Adding job to cron ...')
-            job = cron.new(command=cmd)
-            job.every_reboot()
-            cron.write()
     
 #################################################################################dd###################
 # MAIN
