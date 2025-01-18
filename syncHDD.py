@@ -344,8 +344,7 @@ def main():
             job.every_reboot()
             cron.write()
 
-    # if (disk.checkHDDConnected() and not disk.todayExists()):
-    if (disk.checkHDDConnected()):
+    if (disk.checkHDDConnected() and not disk.todayExists()):
         try:
             disk.removeOldDays()
 
